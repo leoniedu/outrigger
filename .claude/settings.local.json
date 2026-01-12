@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(Rscript:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(python example.py:*)"
+    ]
+  }
+}

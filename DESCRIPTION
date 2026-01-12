@@ -1,0 +1,24 @@
+Package: outrigger
+Title: Outrigger Canoe Race Rotation Analyzer
+Version: 0.1.0
+Authors@R:
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Description: Analyzes crew rotation strategies for long-distance outrigger
+    canoe (OC6) races. Calculates optimal rotation schedules considering
+    role-specific constraints for pacers, steerers, and regular paddlers.
+    Provides workload balancing, feasibility analysis, and visualization tools.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    dplyr,
+    ggplot2,
+    purrr,
+    rlang,
+    tibble,
+    tidyr,
+    stringr
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
