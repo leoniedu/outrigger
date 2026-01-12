@@ -8,7 +8,9 @@
       "Bash(pip3 install:*)",
       "Bash(source .venv/bin/activate)",
       "Bash(pip install:*)",
-      "Bash(python example.py:*)"
+      "Bash(python example.py:*)",
+      "Bash(python:*)",
+      "Bash(.venv/bin/python:*)"
     ]
   }
 }

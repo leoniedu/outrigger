@@ -6,6 +6,29 @@ Extend the `outrigger` package with a mixed-integer programming (MIP) optimizer 
 
 **Design principle:** The optimization module is fully self-contained. It does not depend on existing package functions (`analyze_scenario()`, `run_scenarios()`, etc.), which may be refactored or removed later. All necessary calculations (e.g., `n_stints` from distance/speed) are computed independently within the optimization code.
 
+## Implementation Status
+
+| Stage | Status | Notes |
+|-------|--------|-------|
+| Stage 1: Fatigue Curve | ✅ Complete | `fatigue.py` |
+| Stage 2: Race Time Calculation | ✅ Complete | Inline in `solve_rotation_full()` |
+| Stage 3: Parameters & Validation | ✅ Complete | `model.py` |
+| Stage 4: MIP Model | ✅ Complete | `model.py` with PuLP/CBC |
+| Stage 5: Output Formatting | ✅ Complete | Returns schedule + paddler stats |
+| Stage 6: Visualization | 🔲 Not Started | `plot.py` planned |
+| Stage 7: Meta-Optimization | ✅ Complete | `meta.py` |
+| Stage 8: Integration | ✅ Mostly Complete | `example.py` working, tests pending |
+| Stage 9: Pattern Consistency | ✅ Complete | Entry rule + switch rule penalties |
+
+**Package location:** `outrigger_opt/`
+
+**Key files:**
+- `model.py` - Core MIP solver (`solve_rotation_full()`)
+- `fatigue.py` - Fatigue curve functions
+- `meta.py` - Stint duration grid search (`optimize_stint_range()`)
+- `utils.py` - Helper functions (`demo_paddlers()`)
+- `example.py` - Working usage examples
+
 ## Problem Formulation
 
 ### Objective
@@ -70,23 +93,32 @@ This is linear and tractable. Race time is computed post-hoc from the solution.
 | `Y[p,t,k]` | Binary | Paddler p at stint t has exactly k consecutive stints |
 | `Q[p,t,k]` | Continuous [0, max_weight] | Linearization variable for weighted seat × fatigue output |
 
-Note: Transition variables (`crew_switch`, `seat_switch`) removed from model. Transitions are computed post-hoc from the solution for reporting.
+**Pattern consistency variables (optional, for reducing confusion):**
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `EntryUsed[p,s]` | Binary | Paddler p ever enters seat s from rest |
+| `TransitionUsed[p,s,s']` | Binary | Paddler p ever transitions from seat s to s' while paddling |
+
+Note: These variables count rules to remember. Fewer rules = simpler pattern. Set penalties to 0 to disable.
+
+**Seat entry weight variables (optional, for entry difficulty):**
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `Entry[p,s,t]` | Binary | Paddler p enters seat s at stint t from rest (t > 0 only) |
+
+Note: Only created when any seat_entry_weight != 1.0. Penalizes entries into hard-to-enter seats.
 
 ### Seat Eligibility
 
 Seat assignments are controlled by an **eligibility matrix** `E[p,s]` where 1 means paddler p can sit in seat s.
 
-**Default eligibility (from roles):**
+**Default eligibility:** If no eligibility matrix is provided, all paddlers are eligible for all seats (matrix of all 1s).
 
-| Role | Eligible Seats | Description |
-|------|----------------|-------------|
-| pacer | 1-5 | Front seats and middle |
-| regular | 3-5 | Middle seats only |
-| steerer | 3-6 | Middle seats and steering |
+**Custom eligibility:** Users can provide any (n_paddlers × n_seats) binary matrix to specify seat restrictions.
 
-**Custom eligibility:** Users can provide any (n_paddlers × n_seats) binary matrix to specify arbitrary seat restrictions.
-
-**Example custom eligibility:**
+**Example eligibility matrix:**
 
 ```
            Seat1 Seat2 Seat3 Seat4 Seat5 Seat6
@@ -342,7 +374,8 @@ Note: 30-min stints allow more flexibility—stint 2 still has good output.
 | `n_seats` | Seats in canoe | 6 |
 | `n_resting` | Number of paddlers resting each stint | 3 |
 | `n_paddlers` | Total crew size | computed: n_seats + n_resting |
-| `seat_weights` | Importance weight by seat | [1.2, 1.0, 0.9, 0.9, 0.9, 1.1] |
+| `seat_weights` | Importance weight by seat | [1.2, 1.1, 0.9, 0.9, 0.9, 1.1] |
+| `seat_entry_weight` | Entry ease weight by seat (>1 easier, <1 harder) | [1.0] * n_seats |
 | `seat_eligibility` | (n_paddlers × n_seats) matrix of eligible assignments | generated from roles |
 
 ### Fatigue Parameters
@@ -360,7 +393,7 @@ Note: 30-min stints allow more flexibility—stint 2 still has good output.
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `time_limit` | Maximum solver time in seconds | 60 |
-| `gap_tolerance` | Acceptable optimality gap (e.g., 0.02 = 2%) | 0.02 |
+| `gap_tolerance` | Acceptable optimality gap (e.g., 0.01 = 1%) | 0.01 |
 
 ### Switching Model
 
@@ -374,16 +407,108 @@ Note: 30-min stints allow more flexibility—stint 2 still has good output.
 
 **Key insight:** A seat switch does NOT reset fatigue. Only resting resets the consecutive stint counter.
 
-Note: `crew_switch_cost` and `seat_switch_cost` penalty terms removed from objective. Switching overhead is captured directly via `switch_time_min` in the race time formula.
+### Pattern Consistency (Reducing Confusion)
+
+Paddlers need to remember rules for:
+1. **Which seat to enter** when coming back from rest
+2. **What to do next** at each seat (stay or move to which seat)
+
+**Fewer rules = less confusion = fewer mistakes.**
+
+#### Counting Rules
+
+**Entry rules** = number of different seats a paddler enters from rest
+
+| Paddler A entries | Entry rules |
+|-------------------|-------------|
+| Always enters seat 2 | 1 |
+| Sometimes seat 2, sometimes seat 3 | 2 |
+| Enters seats 2, 3, and 4 at different times | 3 |
+
+**Switch rules** = number of different seat transitions while paddling (including staying in same seat)
+
+| Paddler A transitions | Switch rules |
+|-----------------------|--------------|
+| Always stays in seat 2 (2→2) | 1 |
+| Stays in seat 2 (2→2) OR moves 2→3 | 2 |
+| 2→2, 2→3, and 3→3 | 3 |
+
+#### Variables
+
+**`EntryUsed[p,s]`** = 1 if paddler p ever enters seat s from rest
+
+```
+EntryUsed[p,s] ≥ X[p,s,t]  when R[p,t-1] = 1 (entering from rest)
+```
+
+**`TransitionUsed[p,s,s']`** = 1 if paddler p ever transitions from seat s to seat s' while paddling
+
+```
+TransitionUsed[p,s,s'] ≥ X[p,s,t-1] + X[p,s',t] - 1  when R[p,t-1] = 0 and R[p,t] = 0
+```
+
+#### Rule Counts
+
+```
+entry_rules[p] = Σ_s EntryUsed[p,s]
+switch_rules[p] = Σ_{s,s'} TransitionUsed[p,s,s']
+```
+
+#### Objective
+
+```
+Maximize: weighted_output
+          - λ_entry × Σ_p entry_rules[p]
+          - λ_switch × Σ_p switch_rules[p]
+```
+
+**Ideal scenario:** Each paddler has 1 entry rule and minimal switch rules.
+
+**Verify** The first assignment (starting position) shouldnt count for complexity. 
+
+#### Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `entry_rule_penalty` | Penalty per entry rule per paddler | 0.02 |
+| `switch_rule_penalty` | Penalty per switch rule per paddler | 0.02 |
+
+**Interpretation:**
+- With 9 paddlers, if everyone has 1 entry rule: penalty = 9 × 0.02 = 0.18
+- If average is 2 entry rules: penalty = 18 × 0.02 = 0.36
+- The optimizer will trade off output vs. pattern simplicity
+- Set to 0 to disable (pure output optimization)
 
 ### Seat Weight Rationale
 
 | Seat | Weight | Reason |
 |------|--------|--------|
 | 1 | 1.2 | Pacer/voga - sets rhythm, highest priority for rest |
-| 2 | 1.0 | Pacer - important but less critical than seat 1 |
+| 2 | 1.1 | Pacer - important rhythm seat |
 | 3-5 | 0.9 | Regular seats - flexible |
 | 6 | 1.1 | Steerer - tired steerer creates drag |
+
+### Seat Entry Weight
+
+Controls how easy it is to enter each seat from the escort boat during a crew switch.
+
+| Value | Meaning |
+|-------|---------|
+| 1.0 | Normal difficulty (default) |
+| > 1.0 | Easier to enter (optimizer prefers these seats for entries) |
+| < 1.0 | Harder to enter (optimizer avoids these for entries) |
+
+**Example:** Middle seats might be harder to reach from the escort boat:
+
+```python
+seat_entry_weight = [1.2, 1.0, 0.8, 0.8, 1.0, 1.2]  # ends easier, middle harder
+```
+
+**Effect on optimization:**
+- The optimizer penalizes entries (from rest) into hard-to-enter seats
+- Does NOT affect race_time calculation (only optimization preference)
+- Scale factor converts entry difficulty to output-equivalent units
+- Set all to 1.0 to disable (default behavior)
 
 ---
 
@@ -393,23 +518,7 @@ Note: `crew_switch_cost` and `seat_switch_cost` penalty terms removed from objec
 
 Required column: `name`
 
-Optional column: `role` (used if `seat_eligibility` not provided)
-
-**Example with roles (generates eligibility automatically):**
-
-| name | role |
-|------|------|
-| Ana | pacer |
-| Ben | pacer |
-| Carlos | pacer |
-| Diana | regular |
-| Eve | regular |
-| Gina | regular |
-| Hiro | regular |
-| Frank | steerer |
-| Ivan | steerer |
-
-**Example without roles (requires custom eligibility):**
+**Example:**
 
 | name |
 |------|
@@ -427,39 +536,65 @@ Optional column: `role` (used if `seat_eligibility` not provided)
 
 Binary matrix of shape (n_paddlers × n_seats) where 1 = paddler can sit in seat.
 
-If not provided, generated from `role` column using `make_eligibility_from_roles()`.
+If not provided, defaults to all 1s (all paddlers eligible for all seats).
 
-### Output: `schedule` (Wide Format)
+### Output: `solve_rotation_full()` Return Dict
 
-| stint | seat_1 | seat_2 | seat_3 | seat_4 | seat_5 | seat_6 | resting |
-|-------|--------|--------|--------|--------|--------|--------|---------|
-| 1 | Ana | Ben | Carlos | Diana | Eve | Frank | Gina, Hiro, Ivan |
-| 2 | Ana | Ben | Carlos | Diana | Gina | Frank | Eve, Hiro, Ivan |
-| 3 | Ben | Ana | Hiro | Diana | Gina | Frank | Carlos, Eve, Ivan |
+The function returns a dictionary with the following keys:
 
-### Output: `schedule_long` (Long Format)
+**`status`** (string): Solver status
+- "Optimal" - found optimal solution
+- "Not Solved" - solver failed or timed out
+- "Infeasible" - no feasible solution exists
 
-| stint | seat | paddler | role | consecutive_stint | output_multiplier |
-|-------|------|---------|------|-------------------|-------------------|
-| 1 | 1 | Ana | pacer | 1 | 0.93 |
-| 1 | 2 | Ben | pacer | 1 | 0.93 |
-| 1 | 6 | Frank | steerer | 1 | 0.93 |
-| 1 | NA | Gina | regular | 0 | NA |
+**`schedule`** (DataFrame): Wide format schedule
 
-### Output: `transitions`
+| | seat1 | seat2 | seat3 | seat4 | seat5 | seat6 |
+|---|-------|-------|-------|-------|-------|-------|
+| 0 | Ana | Ben | Carlos | Diana | Eve | Frank |
+| 1 | Ana | Ben | Carlos | Diana | Gina | Frank |
+| 2 | Ben | Ana | Hiro | Diana | Gina | Frank |
 
-| stint | type | paddler | from | to |
-|-------|------|---------|------|-----|
-| 2 | seat_switch | Ana | 1 | 2 |
-| 2 | crew_switch_in | Gina | rest | 5 |
-| 2 | crew_switch_out | Eve | 5 | rest |
+**`avg_output`** (float): Weighted average output across all stints (e.g., 0.85)
 
-### Output: `paddler_summary`
+**`race_time`** (float): Estimated race time in minutes
 
-| paddler | role | stints_paddled | stints_rested | total_output | avg_output |
-|---------|------|----------------|---------------|--------------|------------|
-| Ana | pacer | 6 | 2 | 5.43 | 0.91 |
-| Frank | steerer | 5 | 3 | 4.51 | 0.90 |
+**`parameters`** (dict): Computed race parameters
+```python
+{"stint_min": 40, "n_stints": 9, "seat_entry_weight": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]}
+```
+
+**`paddler_summary`** (DataFrame): Per-paddler statistics
+
+| name | stints_paddled | stints_rested | total_time_min | longest_stretch_stints | longest_stretch_min |
+|------|----------------|---------------|----------------|------------------------|---------------------|
+| Ana | 6 | 2 | 240 | 3 | 120 |
+| Frank | 5 | 3 | 200 | 2 | 80 |
+
+**`summary_stats`** (dict): Aggregate crew statistics
+```python
+{
+    'avg_time_per_paddler_min': 213.3,
+    'max_time_any_paddler_min': 280.0,
+    'min_time_any_paddler_min': 160.0,
+    'max_consecutive_stretch_min': 120.0,
+    'avg_consecutive_stretch_min': 80.0
+}
+```
+
+### Output: `optimize_stint_range()` Return Dict
+
+**`summary`** (DataFrame): Comparison across stint durations
+
+| stint_min | n_stints | avg_output | race_time |
+|-----------|----------|------------|-----------|
+| 30 | 12 | 0.90 | 416.5 |
+| 40 | 9 | 0.87 | 411.2 |
+| 50 | 8 | 0.82 | 427.3 |
+
+**`best`** (dict): Result with lowest race_time (includes full schedule)
+
+**`results`** (list): All individual solve results
 
 ---
 
@@ -471,41 +606,46 @@ If not provided, generated from `role` column using `make_eligibility_from_roles
 
 ```toml
 dependencies = [
-    "pandas",
-    "numpy",
-    "pulp",  # MIP solver interface (includes CBC)
+    "pulp>=2.8",
+    "pandas>=2.0",
+    "numpy>=1.23"
 ]
 ```
 
 **Solver:** PuLP's bundled CBC (COIN-OR Branch and Cut) is used by default. No external solver installation required.
 
-### New Functions
+### Implemented Functions
 
-**Core optimization:**
+**Core optimization (model.py):**
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `solve_rotation_full()` | model.py | Solve MIP for fixed stint duration |
-| `optimize_stint_range()` | meta.py | Grid search over stint durations (meta-optimization) |
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `solve_rotation_full()` | Solve MIP for fixed stint duration, returns schedule + metrics | ✅ Implemented |
+| `validate_paddlers()` | Validates paddler DataFrame structure | ✅ Implemented |
+| `validate_params()` | Validates optimization parameters | ✅ Implemented |
+| `validate_eligibility()` | Validates eligibility matrix dimensions and feasibility | ✅ Implemented |
 
-**Fatigue model:**
+**Fatigue model (fatigue.py):**
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `output_curve()` | fatigue.py | Returns output multiplier for given cumulative minutes |
-| `average_output()` | fatigue.py | Averages curve over a consecutive stint |
-| `compute_output_table()` | fatigue.py | Pre-computes output for each consecutive stint count |
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `output_curve(tau, start, peak, plateau, decay)` | Returns output multiplier for given cumulative minutes | ✅ Implemented |
+| `average_output(stint_min, k, step)` | Averages curve over a consecutive stint | ✅ Implemented |
+| `compute_output_table(stint_min, max_consecutive)` | Pre-computes output for each consecutive stint count | ✅ Implemented |
 
-**Validation and eligibility:**
+**Meta-optimization (meta.py):**
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `validate_paddlers()` | model.py | Validates paddler DataFrame structure |
-| `validate_params()` | model.py | Validates optimization parameters |
-| `make_eligibility_from_roles()` | model.py | Generates eligibility matrix from role column |
-| `validate_eligibility()` | model.py | Validates eligibility matrix dimensions and feasibility |
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `optimize_stint_range()` | Grid search over stint durations | ✅ Implemented |
 
-**Visualization (planned):**
+**Utilities (utils.py):**
+
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `demo_paddlers()` | Returns sample paddler DataFrame for testing | ✅ Implemented |
+
+**Visualization (not yet implemented):**
 
 | Function | File | Purpose |
 |----------|------|---------|
@@ -520,208 +660,174 @@ Each stage must be completed, tested, and verified before proceeding to the next
 
 ---
 
-#### Stage 1: Fatigue Curve
+#### Stage 1: Fatigue Curve ✅ COMPLETE
 
 **Goal:** Implement the output curve that models paddler fatigue over time.
 
-**Functions:**
-- `output_curve(start_output, peak_time, plateau_duration, decay_rate)` → returns function τ → output
-- `compute_stint_outputs(stint_min, curve_fn, max_consecutive)` → returns vector of averaged outputs
-
-**Tests:**
-- Curve returns correct values at τ = 0, 12, 22, 32, 62
-- Stint averages computed correctly (compare to numerical integration)
-
-**Deliverables:**
-- Can call `output_curve()` and get multipliers
-- Can see averaged output for consecutive stints 1, 2, 3, ...
-- Plot of the fatigue curve
-
-**Verification:** Present curve values and stint averages for review.
+**Implemented in `fatigue.py`:**
+- `output_curve(tau, start=0.8, peak=12, plateau=10, decay=0.01)` → returns output multiplier for cumulative minutes τ
+- `average_output(stint_min, k, step=0.25)` → averages curve over consecutive stint k using numerical integration
+- `compute_output_table(stint_min, max_consecutive)` → returns dict {k: avg_output} for k=1..max_consecutive
 
 ---
 
-#### Stage 2: Race Time Calculation
+#### Stage 2: Race Time Calculation ✅ COMPLETE
 
 **Goal:** Given a schedule (paddler assignments), compute estimated race time.
 
-**Functions:**
-- `compute_race_time(schedule, params, stint_outputs, seat_weights)` → race time in minutes
+**Implemented inline in `solve_rotation_full()`:**
 
-**Inputs:**
-- `schedule`: matrix or data frame of paddler assignments (who's in which seat each stint)
-- `stint_outputs`: output multiplier for each paddler in each stint (based on consecutive stints)
-- `params`: includes distance_km, speed_kmh, stint_min, switch_time_min
-
-**Formula:**
+Race time is computed from the MIP solution using:
+```python
+nominal = distance_km/speed_kmh * 60
+switches = n_stints - 1
+race_time = nominal / avg_output + switches * switch_time_min
 ```
-nominal_paddle_time = distance_km / speed_kmh × 60
-avg_output = mean of weighted crew outputs across all stints
-race_time = nominal_paddle_time / avg_output + n_switches × switch_time_min
-```
-
-**Interpretation:**
-- `nominal_paddle_time` = time to finish at output 1.0 (no fatigue)
-- Lower avg_output = slower average speed = proportionally longer race
-- Switching adds fixed overhead
-
-**Tests:**
-- All paddlers at output 1.0 → race_time = nominal_paddle_time + switching
-- avg_output = 0.8 → paddle time is 25% longer
-- Hand-calculated example with known schedule
-
-**Deliverables:**
-- Can compute race time for any hypothetical schedule
-- Understand the tradeoff: fatigue vs switching overhead
-- Compare schedules for same stint duration
-
-**Verification:** Present race time calculation for sample schedules.
 
 ---
 
-#### Stage 3: Parameters and Paddler Roster
+#### Stage 3: Parameters and Paddler Roster ✅ COMPLETE
 
 **Goal:** Clean interface for setting up optimization inputs.
 
-**Functions:**
-- `rotation_params(distance_km, speed_kmh, stint_min, switch_time_min, ...)` → parameter list
-- `validate_paddlers(paddlers)` → validated paddler data frame
+**Implemented in `model.py`:**
+- `validate_paddlers(paddlers, n_seats, n_paddlers)` → validates and returns DataFrame with reset index
+- `validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_min)` → raises ValueError on invalid params
 
-**Computed values:**
-- `n_stints = ceiling((distance_km / speed_kmh * 60) / stint_min)`
-- `n_switches = n_stints - 1`
-- Pre-computed stint outputs for this stint_min
-
-**Tests:**
-- Parameter validation (positive values, etc.)
-- Paddler roster has required columns (id, name, role)
-- Role counts: enough pacers for seats 1-2, steerers for seat 6
-
-**Deliverables:**
-- `rotation_params()` returns complete parameter list
-- Clear error messages for invalid inputs
-
-**Verification:** Present parameter list for a sample race.
+**Note:** Parameters are passed directly to `solve_rotation_full()` rather than via a separate params object.
 
 ---
 
-#### Stage 4: MIP Model (Single Stint Duration)
+#### Stage 4: MIP Model (Single Stint Duration) ✅ COMPLETE
 
 **Goal:** Build and solve the optimization model for fixed stint duration.
 
-**Functions:**
-- `create_rotation_model(paddlers, params)` → ompr model object
-- `optimize_rotation(paddlers, params)` → solved model + extracted schedule
+**Implemented in `model.py`:**
+- `solve_rotation_full()` → complete MIP with PuLP/CBC solver
 
-**Model components:**
-- Decision variables: X[p,s,t], R[p,t], S[p,t], Y[p,t,k]
-- Constraints: seat assignment, role, consecutive tracking, linearization
-- Objective: minimize estimated race time
+**Model components implemented:**
+- Decision variables: X[p,s,t] (only for eligible pairs), R[p,t], S[p,t], Y[p,t,k], Q[p,t,k]
+- All constraints: seat assignment, paddler placement, resting count, consecutive tracking, Y/Q linearization
+- Objective: maximize weighted output (equivalent to minimizing race time)
 
-**Tests:**
-- All constraints satisfied (seats filled, roles respected, one place per paddler)
-- S[p,t] resets on rest, increments when paddling
-- Small example (3 stints) verified by hand
-
-**Deliverables:**
-- MIP solves successfully
-- Returns optimal schedule with race time
-
-**Verification:** Present model summary and solution for small example.
+**Solver configuration:**
+- Time limit (default 60s)
+- Gap tolerance (default 1%)
 
 ---
 
-#### Stage 5: Output Formatting
+#### Stage 5: Output Formatting ✅ COMPLETE
 
 **Goal:** Convert solution into user-friendly formats.
 
-**Functions:**
-- `extract_schedule(solution, paddlers, params)` → list of formatted outputs
+**Implemented in `solve_rotation_full()` return dict:**
 
-**Outputs:**
-- `schedule_wide`: stint × seats table with paddler names
-- `schedule_long`: tidy format with stint, seat, paddler, output
-- `transitions`: crew switches and seat switches between stints
-- `paddler_summary`: per-paddler statistics
+| Output | Format | Description |
+|--------|--------|-------------|
+| `status` | string | Solver status ("Optimal", "Infeasible", etc.) |
+| `schedule` | DataFrame | Wide format: stint × seats with paddler names |
+| `avg_output` | float | Weighted average output across all stints |
+| `race_time` | float | Estimated race time in minutes |
+| `parameters` | dict | Contains `stint_min`, `n_stints` |
+| `paddler_summary` | DataFrame | Per-paddler stats (stints paddled/rested, total time, longest stretch) |
+| `summary_stats` | dict | Aggregate metrics (avg/max/min time per paddler, max consecutive stretch) |
 
-**Tests:**
-- Output dimensions correct
-- All paddlers appear correct number of times
-- Transitions computed correctly from schedule
-
-**Deliverables:**
-- Clean, readable schedule output
-- Summary statistics
-
-**Verification:** Present formatted outputs for review.
+**Note:** `schedule_long` and `transitions` tables from original plan not implemented. Current output focuses on practical metrics.
 
 ---
 
-#### Stage 6: Visualization
+#### Stage 6: Visualization 🔲 NOT STARTED
 
 **Goal:** Visual outputs for schedule and analysis.
 
-**Functions:**
+**Planned functions (not yet implemented):**
 - `plot_schedule(result)` → heatmap of paddler × stint assignments
 - `plot_output_curve(params)` → fatigue curve visualization
 - `plot_stint_output(result)` → bar chart of crew output per stint
 
-**Tests:**
-- Plots render without error
-- Correct data shown
-
-**Deliverables:**
-- Publication-ready visualizations
-
-**Verification:** Present plots for review.
-
 ---
 
-#### Stage 7: Meta-Optimization (Stint Duration)
+#### Stage 7: Meta-Optimization (Stint Duration) ✅ COMPLETE
 
 **Goal:** Find optimal stint duration via grid search.
 
-**Functions:**
-- `optimize_stint_duration(paddlers, params, stint_range)` → best stint_min + all results
-- `plot_stint_comparison(results)` → race time vs stint duration
+**Implemented in `meta.py`:**
+- `optimize_stint_range(paddlers, stint_range, max_consecutive)` → returns dict with summary table and best result
 
-**Algorithm:**
-- For each stint_min in range, solve MIP
-- Compare race times, return best
+**Returns:**
+- `summary`: DataFrame comparing all stint durations (stint_min, n_stints, avg_output, race_time)
+- `best`: dict with lowest race_time result including full schedule
+- `results`: list of all individual results
 
-**Tests:**
-- All stint durations solve successfully
-- Best stint_min has lowest race time
-- Results table complete
-
-**Deliverables:**
-- Comparison table across stint durations
-- Optimal stint_min identified
-- Visualization of tradeoff
-
-**Verification:** Present comparison table and recommendation.
+**Note:** Parallelization mentioned in original plan not implemented (runs sequentially).
 
 ---
 
-#### Stage 8: Integration and Documentation
+#### Stage 8: Integration and Documentation ✅ MOSTLY COMPLETE
 
 **Goal:** Full workflow tested end-to-end.
 
-**Tests:**
-- Complete workflow: params → optimize → format → plot
-- Compare to naive round-robin baseline
-- Performance on realistic race (8 stints, 9 paddlers)
+**Completed:**
+- Working optimization module with pip-installable package structure
+- `example.py` with five usage examples:
+  1. All paddlers eligible (default, simplest)
+  2. Custom eligibility matrix
+  3. Different crew sizes (configurable n_seats, n_resting)
+  4. Meta-optimization across stint durations
+  5. Pattern consistency penalties
 
-**Deliverables:**
-- Working optimization module
-- Example usage in documentation
-- All tests passing
+**Not completed:**
+- Formal test suite (pytest tests)
+- Baseline comparison (naive round-robin)
+- Comprehensive documentation beyond example.py
 
-**Verification:** Final review of complete system.
+---
+
+#### Stage 9: Pattern Consistency ✅ COMPLETE
+
+**Goal:** Penalize complex rotation patterns by counting rules each paddler must remember.
+
+**Implemented in `model.py`:**
+
+New parameters added to `solve_rotation_full()`:
+- `entry_rule_penalty` - Penalty per entry rule per paddler (default: 0.0 = disabled)
+- `switch_rule_penalty` - Penalty per switch rule per paddler (default: 0.0 = disabled)
+
+**Variables (only created when penalties > 0):**
+- `EntryUsed[p,s]` - Binary, 1 if paddler p ever enters seat s from rest
+- `TransitionUsed[p,s,s']` - Binary, 1 if paddler p ever transitions s→s' while paddling
+
+**Constraints:**
+```python
+# Track entry seats used (t=0 counts as entering from rest)
+EntryUsed[p,s] >= X[p,s,0]
+EntryUsed[p,s] >= X[p,s,t] + R[p,t-1] - 1  # for t > 0
+
+# Track transitions used (consecutive paddling stints)
+TransitionUsed[p,s,s'] >= X[p,s,t-1] + X[p,s',t] - 1 - R[p,t-1] - R[p,t]
+```
+
+**Modified objective:**
+```
+Maximize: weighted_output
+          - entry_rule_penalty × Σ EntryUsed[p,s]
+          - switch_rule_penalty × Σ TransitionUsed[p,s,s']
+```
+
+**New output:** `pattern_stats` dict with:
+- `total_entry_rules`, `total_switch_rules`
+- `avg_entry_rules_per_paddler`, `avg_switch_rules_per_paddler`
+- Per-paddler `entry_rules` and `switch_rules` in `paddler_summary`
+
+**Example:** `python example.py 5` demonstrates the effect of pattern penalties
+
+---
 
 ### Model Size Estimate
 
 For 8 stints, 9 paddlers, 6 seats, max_consecutive = 6:
+
+**Core variables (current implementation):**
 
 | Variable | Count | Notes |
 |----------|-------|-------|
@@ -730,7 +836,24 @@ For 8 stints, 9 paddlers, 6 seats, max_consecutive = 6:
 | S[p,t] | 9 × 8 = 72 | |
 | Y[p,t,k] | 9 × 8 × 6 = 432 | |
 | Q[p,t,k] | 9 × 8 × 6 = 432 | Continuous (linearization) |
-| **Total** | ~1,440 variables | |
+| **Subtotal** | ~1,440 variables | |
+
+**Pattern consistency variables (when penalties > 0):**
+
+| Variable | Count | Notes |
+|----------|-------|-------|
+| EntryUsed[p,s] | 9 × 6 = 54 | Which seats each paddler enters from rest |
+| TransitionUsed[p,s,s'] | 9 × 6 × 6 = 324 | Which transitions each paddler uses |
+| **Subtotal** | ~378 variables | |
+
+**Seat entry weight variables (when any weight != 1.0):**
+
+| Variable | Count | Notes |
+|----------|-------|-------|
+| Entry[p,s,t] | ≤ 9 × 6 × 7 = 378 | Per-stint entries (t > 0 only, eligible pairs) |
+| **Subtotal** | ~378 variables | |
+
+| **Total with all optional features** | ~2,196 variables | |
 
 **Constraint counts:**
 
@@ -763,10 +886,14 @@ This is tractable for CBC (typically solves in 10-60 seconds). The time limit pa
 | Output format | Schedule has correct structure and dimensions |
 | Meta-optimization | Grid search returns best stint_min, all solves complete |
 | Stint comparison | Shorter stints have more switches, longer stints have more fatigue |
-| Eligibility from roles | Default eligibility matrix matches role definitions |
+| Default eligibility | No eligibility = all 1s (all paddlers can sit anywhere) |
 | Custom eligibility | Solver respects arbitrary eligibility matrix |
 | Eligibility validation | Invalid eligibility (empty seats/paddlers) raises error |
 | Input validation | Missing columns, wrong counts, invalid params raise errors |
+| Entry rules count | EntryUsed correctly tracks which seats each paddler enters from rest |
+| Switch rules count | TransitionUsed correctly tracks seat transitions while paddling |
+| Rule penalties | Higher penalties → fewer total rules (simpler patterns) |
+| Penalty=0 equivalence | With penalties=0, solution matches original (pure output optimization) |
 
 ---
 

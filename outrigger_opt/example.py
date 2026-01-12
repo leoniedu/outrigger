@@ -3,29 +3,23 @@
 
 import pandas as pd
 import numpy as np
-from outrigger_opt import solve_rotation_full, optimize_stint_range, make_eligibility_from_roles
+from outrigger_opt import solve_rotation_full, optimize_stint_range
 
 
-def example_role_based():
-    """Option 1: Role-based eligibility (simplest)."""
+def example_all_eligible():
+    """Option 1: All paddlers eligible for all seats (simplest)."""
     print("=" * 60)
-    print("OPTION 1: Role-based eligibility")
+    print("OPTION 1: All paddlers eligible for all seats")
     print("=" * 60)
 
     paddlers = pd.DataFrame({
-        'name': ['Eduardo', 'Vitor', 'Guilherme', 'Airton', 'Ricardo', 'Sergio', 'Everson', 'Marcelo',  'Zé'],
-        'role': ['pacer', 'pacer', 'pacer', 'regular', 'regular', 'regular', 'regular', 'steerer', 'steerer']
+        'name': ['Eduardo', 'Vitor', 'Guilherme', 'Airton', 'Ricardo',
+                 'Sergio', 'Everson', 'Marcelo', 'Ze']
     })
 
     print("\nPaddlers:")
     print(paddlers)
-
-    # Show generated eligibility
-    eligibility = make_eligibility_from_roles(paddlers)
-    print("\nGenerated eligibility matrix (1=can sit in seat):")
-    print("         Seat1 Seat2 Seat3 Seat4 Seat5 Seat6")
-    for i, name in enumerate(paddlers.name):
-        print(f"{name:8} {' '.join(str(x).center(5) for x in eligibility[i])}")
+    print("\nAll 9 paddlers can sit in any of the 6 seats.")
 
     print("\nSolving...")
     result = solve_rotation_full(
@@ -53,20 +47,20 @@ def example_custom_eligibility():
     print("=" * 60)
 
     paddlers = pd.DataFrame({
-        'name': ['V1', 'V2', 'V3', 'H1', 'H2', 'H3', 'H4', 'L1', 'L2']
+        'name': ['V1', 'V2', 'V3', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2']
     })
 
     # Define who can sit where (rows=paddlers, cols=seats 1-6)
     eligibility = np.array([
-        [1, 1, 0, 0, 0, 0],  # 
-        [1, 1, 0, 0, 0, 0],  # 
-        [1, 1, 1, 0, 0, 0],  # 
-        [0, 0, 1, 1, 0, 0],  # 
-        [0, 0, 1, 1, 0, 0],  # 
-        [0, 0, 0, 1, 1, 0],  # 
-        [0, 0, 0, 1, 1, 0],  # 
-        [0, 0, 0, 0, 1, 1],  # 
-        [0, 0, 0, 0, 1, 1],  # 
+        [1, 1, 0, 0, 0, 0],  # V1: front only
+        [1, 1, 0, 0, 0, 0],  # V2: front only
+        [1, 1, 1, 0, 0, 0],  # V3: front + seat 3
+        [0, 0, 1, 1, 0, 0],  # H1: middle front
+        [0, 0, 1, 1, 0, 0],  # H2: middle front
+        [0, 0, 0, 1, 1, 0],  # H3: middle back
+        [0, 0, 0, 1, 1, 0],  # H4: middle back
+        [0, 0, 0, 0, 1, 1],  # L1: back + steering
+        [0, 0, 0, 0, 1, 1],  # L2: back + steering
     ])
 
     print("\nPaddlers with custom eligibility:")
@@ -78,17 +72,28 @@ def example_custom_eligibility():
     result = solve_rotation_full(
         paddlers,
         seat_eligibility=eligibility,
-        seat_weights=[1.2, 1.15, 1.1, 1, 1,1.2],
-        stint_min=30,
-        time_limit=40,
+        seat_weights=[1, 1, 1, 1, 1, 1],
+        seat_entry_weight=[1, 1.5, 1.5, 1.5, 1.5, 1],
+        stint_min=20,
+        time_limit=120,
         switch_time_min=1,
-
+        max_consecutive=3,
+        entry_rule_penalty=0.05,
+        switch_rule_penalty=0.05,
+        gap_tolerance=.001
     )
 
     print(f"\nStatus: {result['status']}")
     print(f"Race time: {result['race_time']:.1f} min")
     print(f"\nSchedule:")
     print(result['schedule'])
+
+    print(f"\nPaddler Summary:")
+    print(result['paddler_summary'].to_string(index=False))
+
+    print(f"\nAggregate Stats:")
+    for key, val in result['summary_stats'].items():
+        print(f"  {key}: {val:.1f}")
 
     return result
 
@@ -135,8 +140,8 @@ def example_meta_optimization():
     print("=" * 60)
 
     paddlers = pd.DataFrame({
-        'name': ['Ana', 'Ben', 'Carlos', 'Diana', 'Eve', 'Gina', 'Hiro', 'Frank', 'Ivan'],
-        'role': ['pacer', 'pacer', 'pacer', 'regular', 'regular', 'regular', 'regular', 'steerer', 'steerer']
+        'name': ['Ana', 'Ben', 'Carlos', 'Diana', 'Eve',
+                 'Gina', 'Hiro', 'Frank', 'Ivan']
     })
 
     print("\nTesting stint durations: 30, 40, 50, 60 minutes")
@@ -159,25 +164,102 @@ def example_meta_optimization():
     return results
 
 
+def example_pattern_penalties():
+    """Option 5: Pattern consistency penalties."""
+    print("\n" + "=" * 60)
+    print("OPTION 5: Pattern consistency penalties")
+    print("=" * 60)
+
+    paddlers = pd.DataFrame({
+        'name': ['Ana', 'Ben', 'Carlos', 'Diana', 'Eve',
+                 'Gina', 'Hiro', 'Frank', 'Ivan']
+    })
+
+    print("\nComparing schedules with and without pattern penalties...")
+    print("Pattern penalties encourage simpler rotation rules.\n")
+
+    # Without penalties (pure output optimization)
+    print("-" * 40)
+    print("WITHOUT pattern penalties:")
+    print("-" * 40)
+    result_no_penalty = solve_rotation_full(
+        paddlers,
+        stint_min=40,
+        distance_km=60,
+        speed_kmh=10,
+        time_limit=30,
+        entry_rule_penalty=0.0,
+        switch_rule_penalty=0.0
+    )
+    print(f"Status: {result_no_penalty['status']}")
+    print(f"Race time: {result_no_penalty['race_time']:.1f} min")
+    print(f"Avg output: {result_no_penalty['avg_output']:.3f}")
+    print(f"\nSchedule:")
+    print(result_no_penalty['schedule'])
+
+    # With penalties (encourage simpler patterns)
+    print("\n" + "-" * 40)
+    print("WITH pattern penalties (entry=0.05, switch=0.05):")
+    print("-" * 40)
+    result_with_penalty = solve_rotation_full(
+        paddlers,
+        stint_min=40,
+        distance_km=60,
+        speed_kmh=10,
+        time_limit=300,
+        entry_rule_penalty=0.05,
+        switch_rule_penalty=0.05
+    )
+    print(f"Status: {result_with_penalty['status']}")
+    print(f"Race time: {result_with_penalty['race_time']:.1f} min")
+    print(f"Avg output: {result_with_penalty['avg_output']:.3f}")
+    print(f"\nSchedule:")
+    print(result_with_penalty['schedule'])
+
+    # Compare pattern complexity
+    print("\n" + "-" * 40)
+    print("Pattern Complexity Comparison:")
+    print("-" * 40)
+    ps_no = result_no_penalty['pattern_stats']
+    ps_with = result_with_penalty['pattern_stats']
+
+    print(f"                          No Penalty    With Penalty")
+    print(f"Total entry rules:        {ps_no['total_entry_rules']:>10}    {ps_with['total_entry_rules']:>12}")
+    print(f"Total switch rules:       {ps_no['total_switch_rules']:>10}    {ps_with['total_switch_rules']:>12}")
+    print(f"Avg entry rules/paddler:  {ps_no['avg_entry_rules_per_paddler']:>10.1f}    {ps_with['avg_entry_rules_per_paddler']:>12.1f}")
+    print(f"Avg switch rules/paddler: {ps_no['avg_switch_rules_per_paddler']:>10.1f}    {ps_with['avg_switch_rules_per_paddler']:>12.1f}")
+
+    print("\n" + "-" * 40)
+    print("Per-paddler breakdown (with penalties):")
+    print("-" * 40)
+    cols = ['name', 'stints_paddled', 'entry_rules', 'switch_rules']
+    print(result_with_penalty['paddler_summary'][cols].to_string(index=False))
+
+    return result_no_penalty, result_with_penalty
+
+
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) > 1:
         option = sys.argv[1]
         if option == "1":
-            example_role_based()
+            example_all_eligible()
         elif option == "2":
             example_custom_eligibility()
         elif option == "3":
             example_different_crew_size()
         elif option == "4":
             example_meta_optimization()
+        elif option == "5":
+            example_pattern_penalties()
         else:
             print(f"Unknown option: {option}")
-            print("Usage: python example.py [1|2|3|4]")
+            print("Usage: python example.py [1|2|3|4|5]")
     else:
         # Run all examples
-        example_role_based()
+        example_all_eligible()
         example_custom_eligibility()
         example_different_crew_size()
         example_meta_optimization()
+        example_pattern_penalties()
