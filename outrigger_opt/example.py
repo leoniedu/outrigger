@@ -3,7 +3,8 @@
 
 import pandas as pd
 import numpy as np
-from outrigger_opt import solve_rotation_full, optimize_stint_range
+import time
+from outrigger_opt import solve_rotation_full, solve_rotation_cycle, optimize_stint_range
 
 
 def example_all_eligible():
@@ -27,7 +28,7 @@ def example_all_eligible():
         stint_min=30,
         distance_km=60,
         speed_kmh=9.5,
-        switch_time_min=2,
+        switch_time_min=1,
         time_limit=30
     )
 
@@ -69,18 +70,17 @@ def example_custom_eligibility():
         print(f"{name:8} {' '.join(str(x).center(5) for x in eligibility[i])}")
 
     print("\nSolving...")
-    result = solve_rotation_full(
+    result = solve_rotation_cycle(
         paddlers,
         seat_eligibility=eligibility,
-        seat_weights=[1, 1, 1, 1, 1, 1],
-        seat_entry_weight=[1, 1.5, 1.5, 1.5, 1.5, 1],
+        seat_weights=[1.1, 1, 1, 1, 1, 1.1],
+        seat_entry_weight=[1, 1.2, 1.2, 1.2, 1.2, 1],
         stint_min=20,
         time_limit=120,
-        switch_time_min=1,
+        switch_time_min=.5,
         max_consecutive=3,
-        entry_rule_penalty=0.05,
-        switch_rule_penalty=0.05,
-        gap_tolerance=.001
+        gap_tolerance=.001,
+        
     )
 
     print(f"\nStatus: {result['status']}")
@@ -238,6 +238,85 @@ def example_pattern_penalties():
     return result_no_penalty, result_with_penalty
 
 
+def example_cycle_vs_full():
+    """Option 6: Compare cycle-based solver with full-race solver."""
+    print("\n" + "=" * 60)
+    print("OPTION 6: Cycle-based solver vs Full-race solver")
+    print("=" * 60)
+
+    paddlers = pd.DataFrame({
+        'name': ['Ana', 'Ben', 'Carlos', 'Diana', 'Eve',
+                 'Gina', 'Hiro', 'Frank', 'Ivan']
+    })
+
+    print("\nComparing two approaches:")
+    print("- Full-race: Models all stints (more variables)")
+    print("- Cycle-based: Models one repeating cycle (fewer variables)")
+    print("  For 9 paddlers, 6 seats, 3 resting: cycle = 3 stints\n")
+
+    # Full-race solver
+    print("-" * 40)
+    print("FULL-RACE SOLVER:")
+    print("-" * 40)
+    start_full = time.time()
+    result_full = solve_rotation_full(
+        paddlers,
+        stint_min=40,
+        distance_km=60,
+        speed_kmh=10,
+        time_limit=60
+    )
+    elapsed_full = time.time() - start_full
+    print(f"Status: {result_full['status']}")
+    print(f"Solve time: {elapsed_full:.2f}s")
+    print(f"n_stints: {result_full['parameters']['n_stints']}")
+    print(f"Race time: {result_full['race_time']:.1f} min")
+    print(f"Avg output: {result_full['avg_output']:.3f}")
+    print(f"\nSchedule:")
+    print(result_full['schedule'])
+
+    # Cycle-based solver
+    print("\n" + "-" * 40)
+    print("CYCLE-BASED SOLVER:")
+    print("-" * 40)
+    start_cycle = time.time()
+    result_cycle = solve_rotation_cycle(
+        paddlers,
+        stint_min=40,
+        distance_km=60,
+        speed_kmh=10,
+        time_limit=60
+    )
+    elapsed_cycle = time.time() - start_cycle
+    print(f"Status: {result_cycle['status']}")
+    print(f"Solve time: {elapsed_cycle:.2f}s")
+    print(f"Cycle length: {result_cycle['parameters']['cycle_length']} stints")
+    print(f"n_stints (full race): {result_cycle['parameters']['n_stints']}")
+    print(f"Race time: {result_cycle['race_time']:.1f} min")
+    print(f"Avg output: {result_cycle['avg_output']:.3f}")
+    print(f"\nCycle Schedule (repeating pattern):")
+    print(result_cycle['cycle_schedule'])
+    print(f"\nFull Schedule (cycle expanded):")
+    print(result_cycle['schedule'])
+
+    # Comparison
+    print("\n" + "-" * 40)
+    print("COMPARISON:")
+    print("-" * 40)
+    print(f"                    Full-Race    Cycle-Based")
+    print(f"Solve time:         {elapsed_full:>8.2f}s    {elapsed_cycle:>11.2f}s")
+    print(f"Race time:          {result_full['race_time']:>8.1f} min  {result_cycle['race_time']:>9.1f} min")
+    print(f"Avg output:         {result_full['avg_output']:>8.3f}      {result_cycle['avg_output']:>11.3f}")
+
+    speedup = elapsed_full / elapsed_cycle if elapsed_cycle > 0 else float('inf')
+    print(f"\nSpeedup: {speedup:.1f}x faster with cycle-based approach")
+
+    diff = abs(result_full['race_time'] - result_cycle['race_time'])
+    print(f"Race time difference: {diff:.1f} min")
+
+    return result_full, result_cycle
+
+
 if __name__ == "__main__":
     import sys
 
@@ -253,9 +332,11 @@ if __name__ == "__main__":
             example_meta_optimization()
         elif option == "5":
             example_pattern_penalties()
+        elif option == "6":
+            example_cycle_vs_full()
         else:
             print(f"Unknown option: {option}")
-            print("Usage: python example.py [1|2|3|4|5]")
+            print("Usage: python example.py [1|2|3|4|5|6]")
     else:
         # Run all examples
         example_all_eligible()
@@ -263,3 +344,4 @@ if __name__ == "__main__":
         example_different_crew_size()
         example_meta_optimization()
         example_pattern_penalties()
+        example_cycle_vs_full()

@@ -13,21 +13,22 @@ Extend the `outrigger` package with a mixed-integer programming (MIP) optimizer 
 | Stage 1: Fatigue Curve | ✅ Complete | `fatigue.py` |
 | Stage 2: Race Time Calculation | ✅ Complete | Inline in `solve_rotation_full()` |
 | Stage 3: Parameters & Validation | ✅ Complete | `model.py` |
-| Stage 4: MIP Model | ✅ Complete | `model.py` with PuLP/CBC |
+| Stage 4: MIP Model (Full Race) | ✅ Complete | `model.py` with PuLP/CBC |
 | Stage 5: Output Formatting | ✅ Complete | Returns schedule + paddler stats |
 | Stage 6: Visualization | 🔲 Not Started | `plot.py` planned |
 | Stage 7: Meta-Optimization | ✅ Complete | `meta.py` |
 | Stage 8: Integration | ✅ Mostly Complete | `example.py` working, tests pending |
 | Stage 9: Pattern Consistency | ✅ Complete | Entry rule + switch rule penalties |
+| Stage 10: Cycle-Based Model | ✅ Complete | `solve_rotation_cycle()` with wrap-around fatigue |
 
 **Package location:** `outrigger_opt/`
 
 **Key files:**
-- `model.py` - Core MIP solver (`solve_rotation_full()`)
+- `model.py` - Core MIP solvers (`solve_rotation_full()`, `solve_rotation_cycle()`)
 - `fatigue.py` - Fatigue curve functions
 - `meta.py` - Stint duration grid search (`optimize_stint_range()`)
 - `utils.py` - Helper functions (`demo_paddlers()`)
-- `example.py` - Working usage examples
+- `example.py` - Working usage examples (6 examples)
 
 ## Problem Formulation
 
@@ -823,20 +824,124 @@ Maximize: weighted_output
 
 ---
 
+#### Stage 10: Cycle-Based Model ✅ COMPLETE
+
+**Goal:** Simplify the MIP by modeling a single rotation cycle instead of the entire race.
+
+**Key insight:** For 9 paddlers, 6 seats, 3 resting:
+- Minimum cycle length = n_paddlers / n_resting = 3 stints
+- Each paddler paddles 2 stints, rests 1 stint per cycle
+- The pattern repeats for the entire race
+
+**Benefits:**
+- ~66% reduction in variables (549 vs 1620 for typical race)
+- Solve time ~3x faster
+- Naturally produces repeating patterns (easier for crew to remember)
+- Wrap-around fatigue ensures pattern is sustainable when repeated
+
+**Implemented in `model.py`:**
+
+New function `solve_rotation_cycle()` with same interface as `solve_rotation_full()`.
+
+**New variable for wrap-around fatigue:**
+- `Link[p]` - Integer, captures consecutive count at end of cycle for wrap-around
+
+**Wrap-around constraints:**
+```python
+# Link[p] = Scon[p,C-1] if paddling at end of cycle, else 0
+Link[p] <= Scon[p, cycle_length-1]
+Link[p] <= max_consecutive * (1 - R[p, cycle_length-1])
+Link[p] >= Scon[p, cycle_length-1] - max_consecutive * R[p, cycle_length-1]
+
+# Scon[p,0] with wrap-around: continues from Link if paddling
+Scon[p, 0] <= max_consecutive * (1 - R[p, 0])
+Scon[p, 0] >= Link[p] + 1 - max_consecutive * R[p, 0]
+Scon[p, 0] <= Link[p] + 1
+```
+
+**Race time calculation (exact simulation):**
+
+The race time is computed by simulating the actual race stint-by-stint using the cycle pattern:
+
+```python
+cycle_length = n_paddlers // n_resting  # e.g., 3
+n_stints = ceil((distance_km/speed_kmh*60)/stint_min)
+
+# Simulate actual race stint by stint
+stint_outputs = []
+consecutive = {p: 0 for p in range(P)}  # Track from fresh start
+
+for t in range(n_stints):
+    cycle_t = t % cycle_length
+    # Update consecutive counts (resets on rest)
+    # Calculate stint output using actual consecutive count
+    stint_outputs.append(stint_output)
+
+avg_output = sum(stint_outputs) / n_stints
+race_time = nominal / avg_output + (n_stints - 1) * switch_time_min
+```
+
+This exact simulation handles:
+- First cycle fresh start (no wrap-around effect)
+- Subsequent cycles with wrap-around (consecutive carries across cycle boundary)
+- Partial cycles at the end (just simulates fewer stints)
+- Short races with n_stints < cycle_length (works correctly)
+
+**Most parameters from `solve_rotation_full()` are supported:**
+- `seat_eligibility` - Custom seat restrictions
+- `seat_weights` - Seat importance weights
+- `seat_entry_weight` - Entry difficulty weights
+
+**Not supported in cycle model:**
+- `entry_rule_penalty` and `switch_rule_penalty` - Pattern penalties are not applicable
+  because the repeating cycle already produces a simple, consistent pattern
+
+**Output includes:**
+- `cycle_schedule` - The 3-stint repeating pattern
+- `schedule` - Full race schedule (cycle expanded)
+- `parameters.cycle_length` - Cycle length used
+- `parameters.seat_entry_weight` - Entry weights used
+
+**Example:** `python example.py 6` compares cycle-based vs full-race solver
+
+---
+
 ### Model Size Estimate
 
-For 8 stints, 9 paddlers, 6 seats, max_consecutive = 6:
+#### Full-Race Model (`solve_rotation_full`)
 
-**Core variables (current implementation):**
+For 9 stints, 9 paddlers, 6 seats, max_consecutive = 6:
+
+**Core variables:**
 
 | Variable | Count | Notes |
 |----------|-------|-------|
-| X[p,s,t] | ≤ 9 × 6 × 8 = 432 | Only for eligible (p,s) pairs |
-| R[p,t] | 9 × 8 = 72 | |
-| S[p,t] | 9 × 8 = 72 | |
-| Y[p,t,k] | 9 × 8 × 6 = 432 | |
-| Q[p,t,k] | 9 × 8 × 6 = 432 | Continuous (linearization) |
-| **Subtotal** | ~1,440 variables | |
+| X[p,s,t] | ≤ 9 × 6 × 9 = 486 | Only for eligible (p,s) pairs |
+| R[p,t] | 9 × 9 = 81 | |
+| S[p,t] | 9 × 9 = 81 | |
+| Y[p,t,k] | 9 × 9 × 6 = 486 | |
+| Q[p,t,k] | 9 × 9 × 6 = 486 | Continuous (linearization) |
+| **Subtotal** | ~1,620 variables | |
+
+#### Cycle-Based Model (`solve_rotation_cycle`)
+
+For cycle_length=3, 9 paddlers, 6 seats, max_consecutive = 6:
+
+**Core variables:**
+
+| Variable | Count | Notes |
+|----------|-------|-------|
+| X[p,s,t] | ≤ 9 × 6 × 3 = 162 | Only for eligible (p,s) pairs |
+| R[p,t] | 9 × 3 = 27 | |
+| S[p,t] | 9 × 3 = 27 | |
+| Y[p,t,k] | 9 × 3 × 6 = 162 | |
+| Q[p,t,k] | 9 × 3 × 6 = 162 | Continuous (linearization) |
+| Link[p] | 9 | Wrap-around consecutive tracking |
+| **Subtotal** | ~549 variables | |
+
+**Comparison:** Cycle-based model has **66% fewer variables** than full-race model.
+
+#### Optional Variables (Full-Race Model)
 
 **Pattern consistency variables (when penalties > 0):**
 
@@ -894,6 +999,10 @@ This is tractable for CBC (typically solves in 10-60 seconds). The time limit pa
 | Switch rules count | TransitionUsed correctly tracks seat transitions while paddling |
 | Rule penalties | Higher penalties → fewer total rules (simpler patterns) |
 | Penalty=0 equivalence | With penalties=0, solution matches original (pure output optimization) |
+| Cycle length | Correct cycle_length = n_paddlers / n_resting |
+| Wrap-around fatigue | Paddler paddling at stints C-1 and 0 has Scon[p,0] = 2 |
+| Cycle expansion | Expanded schedule correctly repeats cycle pattern |
+| Cycle vs full comparison | Both solvers produce similar race times |
 
 ---
 
@@ -905,3 +1014,4 @@ This is tractable for CBC (typically solves in 10-60 seconds). The time limit pa
 - Mid-race strategy adjustments
 - Multi-objective optimization (time vs. fairness)
 - Stochastic optimization for uncertain conditions
+
