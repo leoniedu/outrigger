@@ -37,6 +37,8 @@ def example_basic():
     print(f"\nCycle Rules (* = starting position):")
     for name, rule in result['cycle_rules'].items():
         print(f"  {name}: {rule}")
+    print(f"\nFull Schedule:")
+    print(result['schedule'])
 
     return result
 
@@ -90,6 +92,8 @@ def example_custom_eligibility():
     print(f"\nCycle Rules (* = starting position):")
     for name, rule in result['cycle_rules'].items():
         print(f"  {name}: {rule}")
+    print(f"\nFull Schedule:")
+    print(result['schedule'])
 
     print(f"\nPaddler Summary:")
     print(result['paddler_summary'].to_string(index=False))
@@ -133,6 +137,8 @@ def example_different_crew_size():
     print(f"\nCycle Rules (* = starting position):")
     for name, rule in result['cycle_rules'].items():
         print(f"  {name}: {rule}")
+    print(f"\nFull Schedule:")
+    print(result['schedule'])
 
     return result
 
@@ -214,6 +220,8 @@ def example_paddler_ability():
     print(f"\nCycle Rules (with varying ability, * = starting position):")
     for name, rule in result_varying['cycle_rules'].items():
         print(f"  {name}: {rule}")
+    print(f"\nFull Schedule:")
+    print(result_varying['schedule'])
     print("\nNote: Ana (1.5x) gets high-value Seat 1 for consecutive stints")
 
     return result_equal, result_varying
