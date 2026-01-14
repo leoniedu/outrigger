@@ -34,10 +34,9 @@ def example_basic():
     print(f"\nStatus: {result['status']}")
     print(f"Race time: {result['race_time']:.1f} min")
     print(f"Avg output: {result['avg_output']:.3f}")
-    print(f"\nCycle Schedule (repeats every 3 stints):")
-    print(result['cycle_schedule'])
-    print(f"\nFull Schedule:")
-    print(result['schedule'])
+    print(f"\nCycle Rules (* = starting position):")
+    for name, rule in result['cycle_rules'].items():
+        print(f"  {name}: {rule}")
 
     return result
 
@@ -49,7 +48,7 @@ def example_custom_eligibility():
     print("=" * 60)
 
     paddlers = pd.DataFrame({
-        'name': ['V1', 'V2', 'V3', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2']
+        'name': ['Eduardo', 'Vitor', 'Guilherme', 'Ricardo', 'Airton', 'Everson', 'Sergio', 'Marcelo', 'Zé']
     })
 
     # Define who can sit where (rows=paddlers, cols=seats 1-6)
@@ -75,6 +74,7 @@ def example_custom_eligibility():
         paddlers,
         seat_eligibility=eligibility,
         seat_weights=[1.1, 1, 1, 1, 1, 1.1],
+        paddler_ability=[1.02, 1.01, 1, 1, 1, 1.03, .98, 1.01,1.02],
         seat_entry_weight=[1, 1.2, 1.2, 1.2, 1.2, 1],
         stint_min=20,
         distance_km=60,
@@ -87,10 +87,9 @@ def example_custom_eligibility():
 
     print(f"\nStatus: {result['status']}")
     print(f"Race time: {result['race_time']:.1f} min")
-    print(f"\nCycle Schedule:")
-    print(result['cycle_schedule'])
-    print(f"\nFull Schedule:")
-    print(result['schedule'])
+    print(f"\nCycle Rules (* = starting position):")
+    for name, rule in result['cycle_rules'].items():
+        print(f"  {name}: {rule}")
 
     print(f"\nPaddler Summary:")
     print(result['paddler_summary'].to_string(index=False))
@@ -131,10 +130,9 @@ def example_different_crew_size():
     print(f"\nStatus: {result['status']}")
     print(f"Race time: {result['race_time']:.1f} min")
     print(f"Cycle length: {result['parameters']['cycle_length']} stints")
-    print(f"\nCycle Schedule:")
-    print(result['cycle_schedule'])
-    print(f"\nFull Schedule:")
-    print(result['schedule'])
+    print(f"\nCycle Rules (* = starting position):")
+    for name, rule in result['cycle_rules'].items():
+        print(f"  {name}: {rule}")
 
     return result
 
@@ -164,8 +162,9 @@ def example_meta_optimization():
 
     print(f"\nBest stint duration: {results['best']['stint_min']} min")
     print(f"Best race time: {results['best']['race_time']:.1f} min")
-    print(f"\nBest cycle schedule:")
-    print(results['best']['cycle_schedule'])
+    print(f"\nBest cycle rules (* = starting position):")
+    for name, rule in results['best']['cycle_rules'].items():
+        print(f"  {name}: {rule}")
 
     return results
 
@@ -212,9 +211,10 @@ def example_paddler_ability():
     print(f"  Varying ability race time: {result_varying['race_time']:.1f} min")
     print(f"  Time saved: {result_equal['race_time'] - result_varying['race_time']:.1f} min")
 
-    print(f"\nCycle Schedule (with varying ability):")
-    print(result_varying['cycle_schedule'])
-    print("\nNote: Ana (1.5x) is scheduled more, Ben (0.8x) is scheduled less")
+    print(f"\nCycle Rules (with varying ability, * = starting position):")
+    for name, rule in result_varying['cycle_rules'].items():
+        print(f"  {name}: {rule}")
+    print("\nNote: Ana (1.5x) gets high-value Seat 1 for consecutive stints")
 
     return result_equal, result_varying
 

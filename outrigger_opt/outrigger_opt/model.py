@@ -108,6 +108,46 @@ def expand_cycle_to_race(cycle_schedule, cycle_length, n_stints):
     return full
 
 
+def format_cycle_rules(cycle_schedule, paddlers):
+    """Format cycle schedule as per-paddler rotation rules.
+
+    Args:
+        cycle_schedule: DataFrame with stint rows (index), seat columns
+        paddlers: DataFrame with 'name' column
+
+    Returns:
+        dict mapping paddler name to rule string
+        e.g. {'Eduardo': 'Seat 3* -> Rest -> Seat 6'}
+        where * marks the starting position (stint 0)
+    """
+    rules = {}
+    cycle_length = len(cycle_schedule)
+
+    for name in paddlers.name:
+        positions = []
+        for t in range(cycle_length):
+            # Find where this paddler is at stint t
+            found = False
+            for col in cycle_schedule.columns:
+                if cycle_schedule.iloc[t][col] == name:
+                    seat_num = col.replace('seat', '')
+                    pos = f"Seat {seat_num}"
+                    if t == 0:
+                        pos += "*"
+                    positions.append(pos)
+                    found = True
+                    break
+            if not found:
+                pos = "Rest"
+                if t == 0:
+                    pos += "*"
+                positions.append(pos)
+
+        rules[name] = " -> ".join(positions)
+
+    return rules
+
+
 def solve_rotation_cycle(paddlers,
                          stint_min=40,
                          max_consecutive=6,
@@ -441,6 +481,7 @@ def solve_rotation_cycle(paddlers,
         "status": LpStatus[prob.status],
         "schedule": full_sched,
         "cycle_schedule": cycle_sched,
+        "cycle_rules": format_cycle_rules(cycle_sched, paddlers),
         "avg_output": avg_output,
         "race_time": race_time,
         "parameters": {

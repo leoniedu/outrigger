@@ -63,6 +63,7 @@ def optimize_stint_range(paddlers,
             "race_time": res["race_time"],
             "schedule": res["schedule"],
             "cycle_schedule": res["cycle_schedule"],
+            "cycle_rules": res["cycle_rules"],
         })
     summary = pd.DataFrame([
         {k: r[k] for k in ["stint_min", "n_stints", "avg_output", "race_time"]}
