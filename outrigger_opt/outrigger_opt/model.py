@@ -117,13 +117,15 @@ def format_cycle_rules(cycle_schedule, paddlers):
 
     Returns:
         dict mapping paddler name to rule string
-        e.g. {'Eduardo': 'Seat 3* -> Rest -> Seat 6'}
+        e.g. {'Eduardo': 'Seat 3 → Seat 6 → Rest*'}
         where * marks the starting position (stint 0)
+        Rules are rotated so Rest is always last.
     """
     rules = {}
     cycle_length = len(cycle_schedule)
 
     for name in paddlers.name:
+        # Build list of (position_string, is_stint_zero) tuples
         positions = []
         for t in range(cycle_length):
             # Find where this paddler is at stint t
@@ -131,19 +133,27 @@ def format_cycle_rules(cycle_schedule, paddlers):
             for col in cycle_schedule.columns:
                 if cycle_schedule.iloc[t][col] == name:
                     seat_num = col.replace('seat', '')
-                    pos = f"Seat {seat_num}"
-                    if t == 0:
-                        pos += "*"
-                    positions.append(pos)
+                    positions.append((f"Seat {seat_num}", t == 0))
                     found = True
                     break
             if not found:
-                pos = "Rest"
-                if t == 0:
-                    pos += "*"
-                positions.append(pos)
+                positions.append(("Rest", t == 0))
 
-        rules[name] = " -> ".join(positions)
+        # Rotate so Rest is last
+        rest_idx = next((i for i, (pos, _) in enumerate(positions) if pos == "Rest"), None)
+        if rest_idx is not None and rest_idx < cycle_length - 1:
+            # Rotate: move everything before rest to after rest
+            positions = positions[rest_idx + 1:] + positions[:rest_idx + 1]
+
+        # Format with * marking the starting position
+        formatted = []
+        for pos, is_start in positions:
+            if is_start:
+                formatted.append(f"{pos}*")
+            else:
+                formatted.append(pos)
+
+        rules[name] = " → ".join(formatted)
 
     return rules
 
