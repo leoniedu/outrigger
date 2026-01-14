@@ -10,11 +10,11 @@ def optimize_stint_range(paddlers,
                          switch_time_min=1.5,
                          seat_eligibility=None,
                          seat_weights=None,
-                         seat_entry_weight=None,
+                         seat_entry_weights=None,
                          paddler_ability=None,
                          n_seats=6,
                          n_resting=3,
-                         time_limit=60,
+                         solver_time_secs=60,
                          gap_tolerance=0.01):
     """Grid search over stint durations to find optimal stint length.
 
@@ -27,11 +27,11 @@ def optimize_stint_range(paddlers,
         switch_time_min: Time penalty per crew switch in minutes
         seat_eligibility: Optional (n_paddlers, n_seats) eligibility matrix
         seat_weights: Optional list of seat importance weights
-        seat_entry_weight: Optional list of entry ease weights per seat
+        seat_entry_weights: Optional list of entry ease weights per seat
         paddler_ability: Optional list of ability multipliers per paddler
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
-        time_limit: Maximum solver time in seconds per stint duration
+        solver_time_secs: Maximum solver computation time in seconds per stint duration
         gap_tolerance: Acceptable gap from optimal (default 0.01 = 1%)
 
     Returns:
@@ -49,11 +49,11 @@ def optimize_stint_range(paddlers,
             switch_time_min=switch_time_min,
             seat_eligibility=seat_eligibility,
             seat_weights=seat_weights,
-            seat_entry_weight=seat_entry_weight,
+            seat_entry_weights=seat_entry_weights,
             paddler_ability=paddler_ability,
             n_seats=n_seats,
             n_resting=n_resting,
-            time_limit=time_limit,
+            solver_time_secs=solver_time_secs,
             gap_tolerance=gap_tolerance,
         )
         results.append({

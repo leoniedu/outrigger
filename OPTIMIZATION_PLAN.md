@@ -308,8 +308,8 @@ Pre-compute average output for each consecutive stint given stint length.
 | `n_seats` | Seats in canoe | 6 |
 | `n_resting` | Number of paddlers resting each stint | 3 |
 | `n_paddlers` | Total crew size | computed: n_seats + n_resting |
-| `seat_weights` | Importance weight by seat | [1.2, 1.1, 0.9, 0.9, 0.9, 1.1] |
-| `seat_entry_weight` | Entry ease weight by seat (>1 easier, <1 harder) | [1.0] * n_seats |
+| `seat_weights` | Seat importance for optimization (does NOT affect race_time) | [1.2, 1.1, 0.9, 0.9, 0.9, 1.1] |
+| `seat_entry_weights` | Entry ease for optimization (does NOT affect race_time) | [1.0] * n_seats |
 | `seat_eligibility` | (n_paddlers × n_seats) matrix of eligible assignments | all 1s (all eligible) |
 | `paddler_ability` | Ability multiplier per paddler (>1 stronger, <1 weaker) | [1.0] * n_paddlers |
 
@@ -327,7 +327,7 @@ Pre-compute average output for each consecutive stint given stint length.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `time_limit` | Maximum solver time in seconds | 60 |
+| `solver_time_secs` | Maximum solver computation time in seconds | 60 |
 | `gap_tolerance` | Acceptable optimality gap (e.g., 0.01 = 1%) | 0.01 |
 
 ### Seat Weight Rationale
@@ -352,7 +352,7 @@ Controls how easy it is to enter each seat from the escort boat during a crew sw
 **Example:** Middle seats might be harder to reach from the escort boat:
 
 ```python
-seat_entry_weight = [1.2, 1.0, 0.8, 0.8, 1.0, 1.2]  # ends easier, middle harder
+seat_entry_weights = [1.2, 1.0, 0.8, 0.8, 1.0, 1.2]  # ends easier, middle harder
 ```
 
 **Effect on optimization:**
@@ -438,7 +438,7 @@ The function returns a dictionary with the following keys:
     "stint_min": 40,
     "n_stints": 9,
     "cycle_length": 3,
-    "seat_entry_weight": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    "seat_entry_weights": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
     "paddler_ability": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 }
 ```

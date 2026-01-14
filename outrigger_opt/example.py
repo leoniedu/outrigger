@@ -28,7 +28,7 @@ def example_basic():
         distance_km=60,
         speed_kmh=9.5,
         switch_time_min=1,
-        time_limit=30
+        solver_time_secs=30
     )
 
     print(f"\nStatus: {result['status']}")
@@ -76,12 +76,12 @@ def example_custom_eligibility():
         paddlers,
         seat_eligibility=eligibility,
         seat_weights=[1.1, 1, 1, 1, 1, 1.1],
-        paddler_ability=[1.02, 1.01, 1, 1, 1, 1.03, .98, 1.01,1.02],
-        seat_entry_weight=[1, 1.2, 1.2, 1.2, 1.2, 1],
+        paddler_ability=[1, 1, 1, 1, 1, 1.02, .98, 1,1.02],
+        seat_entry_weights=[1, 1.2, 1.2, 1.2, 1.2, 1],
         stint_min=20,
         distance_km=60,
         speed_kmh=10,
-        time_limit=60,
+        solver_time_secs=60,
         switch_time_min=0.5,
         max_consecutive=3,
         gap_tolerance=0.001,
@@ -128,7 +128,7 @@ def example_different_crew_size():
         n_resting=4,
         seat_weights=[1.2, 1.1, 1.0, 0.9],
         stint_min=30,
-        time_limit=30
+        solver_time_secs=30
     )
 
     print(f"\nStatus: {result['status']}")
@@ -160,7 +160,7 @@ def example_meta_optimization():
     results = optimize_stint_range(
         paddlers,
         stint_range=(30, 40, 50, 60),
-        time_limit=30
+        solver_time_secs=30
     )
 
     print("Comparison:")
@@ -199,7 +199,7 @@ def example_paddler_ability():
         stint_min=40,
         distance_km=60,
         speed_kmh=10,
-        time_limit=30
+        solver_time_secs=30
     )
 
     print("\nSolving with varying ability...")
@@ -209,7 +209,7 @@ def example_paddler_ability():
         distance_km=60,
         speed_kmh=10,
         paddler_ability=ability,
-        time_limit=30
+        solver_time_secs=30
     )
 
     print(f"\nComparison:")

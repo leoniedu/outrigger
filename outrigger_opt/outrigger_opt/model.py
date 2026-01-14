@@ -166,11 +166,11 @@ def solve_rotation_cycle(paddlers,
                          switch_time_min=1.5,
                          seat_eligibility=None,
                          seat_weights=None,
-                         seat_entry_weight=None,
+                         seat_entry_weights=None,
                          paddler_ability=None,
                          n_seats=6,
                          n_resting=3,
-                         time_limit=60,
+                         solver_time_secs=60,
                          gap_tolerance=0.01):
     """Solve the crew rotation optimization using a cycle-based model.
 
@@ -194,13 +194,13 @@ def solve_rotation_cycle(paddlers,
         seat_eligibility: Optional (n_paddlers, n_seats) matrix where 1 = paddler can sit in seat.
                          If None, all paddlers are eligible for all seats.
         seat_weights: Optional list of seat importance weights. Default [1.2, 1.1, 0.9, 0.9, 0.9, 1.1]
-        seat_entry_weight: Optional list of entry ease weights per seat. Default all 1.0.
+        seat_entry_weights: Optional list of entry ease weights per seat. Default all 1.0.
                           >1 = easier to enter, <1 = harder to enter.
         paddler_ability: Optional list of ability multipliers per paddler. Default all 1.0.
                         >1 = stronger paddler, <1 = weaker paddler.
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
-        time_limit: Maximum solver time in seconds (default 60)
+        solver_time_secs: Maximum solver computation time in seconds (default 60)
         gap_tolerance: Acceptable gap from optimal (default 0.01 = 1%)
 
     Returns:
@@ -238,15 +238,15 @@ def solve_rotation_cycle(paddlers,
         raise ValueError(f"seat_weights must have {S} elements, got {len(seat_weights)}")
 
     # Default seat entry weights (all 1.0 = normal difficulty)
-    if seat_entry_weight is None:
-        seat_entry_weight = [1.0] * S
-    if len(seat_entry_weight) != S:
-        raise ValueError(f"seat_entry_weight must have {S} elements, got {len(seat_entry_weight)}")
-    if any(w <= 0 for w in seat_entry_weight):
-        raise ValueError("seat_entry_weight values must be positive")
+    if seat_entry_weights is None:
+        seat_entry_weights = [1.0] * S
+    if len(seat_entry_weights) != S:
+        raise ValueError(f"seat_entry_weights must have {S} elements, got {len(seat_entry_weights)}")
+    if any(w <= 0 for w in seat_entry_weights):
+        raise ValueError("seat_entry_weights values must be positive")
 
     # Check if we need entry weight optimization (any weight != 1.0)
-    use_entry_weights = any(w != 1.0 for w in seat_entry_weight)
+    use_entry_weights = any(w != 1.0 for w in seat_entry_weights)
 
     # Default paddler ability (all 1.0 = equal ability)
     if paddler_ability is None:
@@ -368,11 +368,11 @@ def solve_rotation_cycle(paddlers,
         t0_weight = (n_cycles - 1) / n_cycles if n_cycles > 1 else 0.0
         entry_weight_penalty = entry_weight_scale * (
             lpSum(
-                Entry[p, s, 0] * (1.0 / seat_entry_weight[s] - 1.0) * t0_weight
+                Entry[p, s, 0] * (1.0 / seat_entry_weights[s] - 1.0) * t0_weight
                 for (p, s) in eligible_pairs
             ) +
             lpSum(
-                Entry[p, s, t] * (1.0 / seat_entry_weight[s] - 1.0)
+                Entry[p, s, t] * (1.0 / seat_entry_weights[s] - 1.0)
                 for (p, s) in eligible_pairs for t in range(1, cycle_length)
             )
         )
@@ -381,7 +381,7 @@ def solve_rotation_cycle(paddlers,
     prob += objective
 
     # Solve
-    solver = PULP_CBC_CMD(msg=0, timeLimit=time_limit, gapRel=gap_tolerance)
+    solver = PULP_CBC_CMD(msg=0, timeLimit=solver_time_secs, gapRel=gap_tolerance)
     prob.solve(solver)
 
     # Extract cycle schedule
@@ -390,8 +390,8 @@ def solve_rotation_cycle(paddlers,
         if var.value() and var.value() > 0.5:
             cycle_sched.iloc[t,s] = paddlers.name.iloc[p]
 
-    # Compute stint outputs from cycle (steady-state with wrap-around)
-    # The solver computed Scon values assuming wrap-around is in effect
+    # Compute weighted stint outputs (for optimization objective, uses seat_weights)
+    # Note: This is NOT used for race_time - race_time uses uniform weights
     steady_stint_outputs = []
     for t in range(cycle_length):
         num = 0
@@ -431,18 +431,15 @@ def solve_rotation_cycle(paddlers,
             else:
                 consecutive[p] = 0
 
-        # Calculate stint output
+        # Calculate stint output for race time (uniform seat weights)
+        # seat_weights only affect optimization, not actual race physics
         num = 0
-        den = sum(seat_weights)
         for p in range(P):
             if paddling_this_stint[p]:
-                eligible_seats = [s for s in range(S) if eligibility[p, s]]
-                for s in eligible_seats:
-                    if (p, s, cycle_t) in X and X[p, s, cycle_t].value() and X[p, s, cycle_t].value() > 0.5:
-                        k = min(consecutive[p], max_consecutive)
-                        if k > 0:
-                            num += seat_weights[s] * output_table[k] * paddler_ability[p]
-        stint_outputs.append(num / den)
+                k = min(consecutive[p], max_consecutive)
+                if k > 0:
+                    num += output_table[k] * paddler_ability[p]
+        stint_outputs.append(num / S)  # S seats with uniform weight 1.0
 
     # Calculate race time from exact stint outputs
     total_output = sum(stint_outputs)
@@ -498,7 +495,7 @@ def solve_rotation_cycle(paddlers,
             "stint_min": stint_min,
             "n_stints": n_stints,
             "cycle_length": cycle_length,
-            "seat_entry_weight": seat_entry_weight,
+            "seat_entry_weights": seat_entry_weights,
             "paddler_ability": paddler_ability,
         },
         "paddler_summary": paddler_summary,
