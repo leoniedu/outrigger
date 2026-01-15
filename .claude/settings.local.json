@@ -18,7 +18,9 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nClean up codebase: keep only cycle-based solver\n\n- Remove solve_rotation_full \\(unused full-race model\\)\n- Update meta.py optimize_stint_range with all parameters\n- Simplify exports in __init__.py\n- Rewrite examples to use only solve_rotation_cycle\n- Fix example 3 crew size \\(8 paddlers, 4 seats, 4 resting\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd per-paddler cycle rules display\n\nInstead of showing a stint-by-seat table, display each paddler''s\nrotation pattern as a simple rule string:\n\n  Eduardo: Seat 3* -> Rest -> Seat 6\n\nwhere * marks the starting position. This is clearer for each\ncrew member to understand their individual rotation.\n\n- Add format_cycle_rules\\(\\) helper function in model.py\n- Add cycle_rules to return dict from solve_rotation_cycle\\(\\)\n- Add cycle_rules to meta.py optimize_stint_range\\(\\) results\n- Update all examples to display cycle rules\n- Export format_cycle_rules from __init__.py\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(quarto render:*)"
+      "Bash(quarto render:*)",
+      "WebSearch",
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)"
     ]
   }
 }

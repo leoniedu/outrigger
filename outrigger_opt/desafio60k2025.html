@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Outrigger Optimizer">
-<meta name="dcterms.date" content="2026-01-14">
+<meta name="dcterms.date" content="2026-01-15">
 
 <title>Desafio 60K 2025 - Otimização de Rotação</title>
 <style>
@@ -69,9 +69,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="desafio60k2025_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="desafio60k2025_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="desafio60k2025_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<script src="desafio60k2025_files/libs/quarto-diagram/mermaid.min.js"></script>
-<script src="desafio60k2025_files/libs/quarto-diagram/mermaid-init.js"></script>
-<link href="desafio60k2025_files/libs/quarto-diagram/mermaid.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
 
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
@@ -137,7 +134,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 14, 2026</p>
+      <p class="date">January 15, 2026</p>
     </div>
   </div>
   
@@ -160,7 +157,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="configuração-da-prova" class="level2">
 <h2 class="anchored" data-anchor-id="configuração-da-prova">Configuração da Prova</h2>
-<div id="55925d2a" class="cell" data-execution_count="1">
+<div id="c8b42928" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
@@ -171,13 +168,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuração da prova</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>DISTANCIA_KM <span class="op">=</span> <span class="dv">60</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>VELOCIDADE_KMH <span class="op">=</span> <span class="fl">9.8</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>TEMPO_TROCA_MIN <span class="op">=</span> <span class="dv">0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>TEMPO_TROCA_MIN <span class="op">=</span> <span class="fl">.5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <section id="tripulação" class="level3">
 <h3 class="anchored" data-anchor-id="tripulação">Tripulação</h3>
 <p>A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.</p>
-<div id="e4068928" class="cell" data-execution_count="2">
+<div id="94199fe8" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>paddlers <span class="op">=</span> pd.DataFrame({</span>
@@ -218,9 +215,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Vitor: Voga/contra-voga</span></span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Guilherme: Voga/contra-voga</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Ricardo: hip</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Airton: hip + 4</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Everson: 4</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>],  <span class="co"># Sergio: 5</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">5</span>, <span class="dv">0</span>],  <span class="co"># Airton: 5</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Everson: hip+4</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Sergio: hip+4</span></span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Marcelo: 5 + leme</span></span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Zé: 5 + leme</span></span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>])</span>
@@ -239,7 +236,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 </figcaption>
 <div aria-describedby="tbl-elegibilidade-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="15">
+<div class="cell-output cell-output-display" data-execution_count="3">
 <div>
 
 
@@ -305,16 +302,16 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <td data-quarto-table-cell-role="th">Airton</td>
 <td></td>
 <td></td>
-<td>✓</td>
-<td>✓</td>
 <td></td>
+<td></td>
+<td>5</td>
 <td></td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">Everson</td>
 <td></td>
 <td></td>
-<td></td>
+<td>✓</td>
 <td>✓</td>
 <td></td>
 <td></td>
@@ -323,9 +320,9 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <td data-quarto-table-cell-role="th">Sergio</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
 <td>✓</td>
+<td>✓</td>
+<td></td>
 <td></td>
 </tr>
 <tr class="even">
@@ -355,14 +352,14 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 </figure>
 </div>
 </div>
-<div id="271d23b3" class="cell" data-execution_count="4">
+<div id="443e2b2d" class="cell" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(eligibility, cmap<span class="op">=</span><span class="st">'Blues'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Proa)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>])</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1 (Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6 (Leme)'</span>])</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="dv">9</span>))</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels(paddlers[<span class="st">'name'</span>])</span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
@@ -477,15 +474,15 @@ Por que turnos curtos?
 <section id="otimização" class="level2">
 <h2 class="anchored" data-anchor-id="otimização">Otimização</h2>
 <p>Testamos durações de turno entre <strong>10 e 20 minutos</strong> para encontrar o tempo ótimo.</p>
-<div id="f4d0b429" class="cell" data-execution_count="5">
+<div id="c9835d1b" class="cell" data-execution_count="5">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> optimize_stint_range(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    paddlers,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">10</span>, <span class="dv">20</span>),</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">8</span>, <span class="dv">20</span>),</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    seat_eligibility<span class="op">=</span>eligibility,</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    seat_weights<span class="op">=</span>[<span class="fl">1.05</span>, <span class="fl">1.02</span>, <span class="fl">1.02</span>, <span class="fl">1.01</span>, <span class="fl">1.00</span>, <span class="fl">1.10</span>],</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>[<span class="dv">1</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="dv">1</span>],</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>[<span class="dv">1</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="dv">2</span>, <span class="dv">1</span>],</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    paddler_ability<span class="op">=</span>habilidade,</span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    distance_km<span class="op">=</span>DISTANCIA_KM,</span>
 <span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    speed_kmh<span class="op">=</span>VELOCIDADE_KMH,</span>
@@ -566,7 +563,7 @@ Figure&nbsp;1: Tempo de prova vs.&nbsp;duração do turno
 Table&nbsp;2: Comparação de tempos por duração de turno
 </figcaption>
 <div aria-describedby="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="19">
+<div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
 
@@ -584,83 +581,99 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">0</td>
-<td>10</td>
-<td>37</td>
-<td>96.6%</td>
-<td>380.3</td>
-<td>6.34</td>
+<td>8</td>
+<td>46</td>
+<td>73.3%</td>
+<td>438.5</td>
+<td>7.31</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1</td>
-<td>11</td>
-<td>34</td>
-<td>96.9%</td>
-<td>379.2</td>
-<td>6.32</td>
+<td>9</td>
+<td>41</td>
+<td>73.1%</td>
+<td>436.4</td>
+<td>7.27</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2</td>
-<td>12</td>
-<td>31</td>
-<td>96.9%</td>
-<td>378.9</td>
-<td>6.32</td>
+<td>10</td>
+<td>37</td>
+<td>72.8%</td>
+<td>435.0</td>
+<td>7.25</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">3</td>
-<td>13</td>
-<td>29</td>
-<td>96.9%</td>
-<td>379.2</td>
-<td>6.32</td>
+<td>11</td>
+<td>34</td>
+<td>72.4%</td>
+<td>434.5</td>
+<td>7.24</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">4</td>
-<td>14</td>
-<td>27</td>
-<td>96.7%</td>
-<td>380.0</td>
-<td>6.33</td>
+<td>12</td>
+<td>31</td>
+<td>71.9%</td>
+<td>434.1</td>
+<td>7.24</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">5</td>
-<td>15</td>
-<td>25</td>
-<td>96.4%</td>
-<td>381.1</td>
-<td>6.35</td>
+<td>13</td>
+<td>29</td>
+<td>71.3%</td>
+<td>434.5</td>
+<td>7.24</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">6</td>
-<td>16</td>
-<td>23</td>
-<td>96.0%</td>
-<td>382.5</td>
-<td>6.38</td>
+<td>14</td>
+<td>27</td>
+<td>70.6%</td>
+<td>435.1</td>
+<td>7.25</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">7</td>
-<td>17</td>
-<td>22</td>
-<td>95.6%</td>
-<td>384.1</td>
-<td>6.40</td>
+<td>15</td>
+<td>25</td>
+<td>69.9%</td>
+<td>436.0</td>
+<td>7.27</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8</td>
-<td>18</td>
-<td>21</td>
-<td>95.2%</td>
-<td>386.1</td>
-<td>6.43</td>
+<td>16</td>
+<td>23</td>
+<td>69.1%</td>
+<td>436.9</td>
+<td>7.28</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">9</td>
+<td>17</td>
+<td>22</td>
+<td>68.2%</td>
+<td>438.5</td>
+<td>7.31</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10</td>
+<td>18</td>
+<td>21</td>
+<td>67.3%</td>
+<td>440.4</td>
+<td>7.34</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">11</td>
 <td>19</td>
 <td>20</td>
-<td>94.7%</td>
-<td>388.0</td>
-<td>6.47</td>
+<td>66.3%</td>
+<td>442.5</td>
+<td>7.37</td>
 </tr>
 </tbody>
 </table>
@@ -728,13 +741,13 @@ Configuração Recomendada
 </div>
 <div class="callout-body-container callout-body">
 <p><strong>Duração do turno: 12 minutos</strong></p>
-<p>Tempo estimado de prova: <strong>378.9 minutos</strong> (6.3 horas)</p>
+<p>Tempo estimado de prova: <strong>434.1 minutos</strong> (7.2 horas)</p>
 </div>
 </div>
 <section id="regras-de-rotação" class="level3">
 <h3 class="anchored" data-anchor-id="regras-de-rotação">Regras de Rotação</h3>
 <p>Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:</p>
-<div id="ef5a8938" class="cell" data-execution_count="9">
+<div id="d4a9d8d2" class="cell" data-execution_count="9">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Ciclo de Rotação (repete a cada 3 turnos):</span><span class="ch">\n</span><span class="st">"</span>)</span>
@@ -748,48 +761,11 @@ Configuração Recomendada
   Vitor        Seat 2 → Seat 1 → Rest*
   Guilherme    Seat 2 → Seat 1* → Rest
   Ricardo      Seat 3 → Seat 3* → Rest
-  Airton       Seat 4* → Seat 3 → Rest
-  Everson      Seat 4 → Seat 4 → Rest*
-  Sergio       Seat 5 → Seat 5* → Rest
+  Airton       Seat 5 → Seat 5* → Rest
+  Everson      Seat 3 → Seat 4 → Rest*
+  Sergio       Seat 4* → Seat 4 → Rest
   Marcelo      Seat 5 → Seat 6 → Rest*
   Zé           Seat 6* → Seat 6 → Rest</code></pre>
-</div>
-</div>
-<div class="cell" data-layout-align="default">
-<div class="cell-output-display">
-<div>
-<p></p><figure class="figure"><p></p>
-<div>
-<pre class="mermaid mermaid-js">flowchart TB
-    subgraph Stint1["turno 1"]
-        S1B1[Eduardo] --&gt; S1B2[Vitor]
-        S1B2 --&gt; S1B3[Airton]
-        S1B3 --&gt; S1B4[Sergio]
-        S1B4 --&gt; S1B5[Everson]
-        S1B5 --&gt; S1B6[Marcelo]
-    end
-
-    subgraph Stint2["turno 2"]
-        S2B1[Vitor] --&gt; S2B2[Guilherme]
-        S2B2 --&gt; S2B3[Ricardo]
-        S2B3 --&gt; S2B4[Airton]
-        S2B4 --&gt; S2B5[Sergio]
-        S2B5 --&gt; S2B6[Zé]
-    end
-
-    subgraph Stint3["turno 3"]
-        S3B1[Guilherme] --&gt; S3B2[Eduardo]
-        S3B2 --&gt; S3B3[Ricardo]
-        S3B3 --&gt; S3B4[Everson]
-        S3B4 --&gt; S3B5[Marcelo]
-        S3B5 --&gt; S3B6[Zé]
-    end
-
-    turno1 --&gt; turno2 --&gt; turno3 --&gt; turno1
-</pre>
-</div>
-<p></p></figure><p></p>
-</div>
 </div>
 </div>
 </section>
@@ -825,7 +801,7 @@ Configuração Recomendada
 Table&nbsp;3: Cronograma completo da prova
 </figcaption>
 <div aria-describedby="tbl-schedule-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="22">
+<div class="cell-output cell-output-display" data-execution_count="10">
 <div>
 
 
@@ -859,8 +835,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
@@ -868,8 +844,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -880,7 +856,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="even">
@@ -889,8 +865,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
@@ -898,8 +874,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -910,7 +886,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="odd">
@@ -919,8 +895,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
@@ -928,8 +904,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -940,7 +916,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="even">
@@ -949,8 +925,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
@@ -958,8 +934,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -970,7 +946,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="odd">
@@ -979,8 +955,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
@@ -988,8 +964,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1000,7 +976,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="even">
@@ -1009,8 +985,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
@@ -1018,8 +994,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1030,7 +1006,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="odd">
@@ -1039,8 +1015,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
@@ -1048,8 +1024,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1060,7 +1036,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="even">
@@ -1069,8 +1045,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
@@ -1078,8 +1054,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1090,7 +1066,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="odd">
@@ -1099,8 +1075,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
@@ -1108,8 +1084,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1120,7 +1096,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="even">
@@ -1129,8 +1105,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
@@ -1138,8 +1114,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>0h12</td>
 <td>Eduardo</td>
 <td>Vitor</td>
-<td>Airton</td>
 <td>Everson</td>
+<td>Sergio</td>
 <td>Marcelo</td>
 <td>Zé</td>
 </tr>
@@ -1150,7 +1126,7 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Ricardo</td>
 <td>Everson</td>
-<td>Sergio</td>
+<td>Airton</td>
 <td>Marcelo</td>
 </tr>
 <tr class="odd">
@@ -1159,8 +1135,8 @@ Table&nbsp;3: Cronograma completo da prova
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
-<td>Airton</td>
 <td>Sergio</td>
+<td>Airton</td>
 <td>Zé</td>
 </tr>
 </tbody>
@@ -1217,7 +1193,7 @@ Figure&nbsp;3: Mapa de calor do cronograma de rotação
 </section>
 <section id="resumo" class="level2">
 <h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
-<div id="6d7964c7" class="cell" data-execution_count="12">
+<div id="7c49ce4a" class="cell" data-execution_count="12">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>
@@ -1255,11 +1231,11 @@ Figure&nbsp;3: Mapa de calor do cronograma de rotação
 </tr>
 <tr class="even">
 <td>Tempo por troca</td>
-<td>0 min</td>
+<td>0.5 min</td>
 </tr>
 <tr class="odd">
 <td><strong>Tempo total</strong></td>
-<td><strong>378.9 min</strong> (6.3 h)</td>
+<td><strong>434.1 min</strong> (7.2 h)</td>
 </tr>
 </tbody>
 </table>
