@@ -35,7 +35,7 @@ from outrigger_opt import optimize_stint_range, solve_rotation_cycle
 # Configuração da prova
 DISTANCIA_KM = 60
 VELOCIDADE_KMH = 9.8
-TEMPO_TROCA_MIN = 0
+TEMPO_TROCA_MIN = .5
 ```
 
 ### Tripulação
@@ -70,9 +70,9 @@ eligibility = np.array([
     [1, 1, 0, 0, 0, 0],  # Vitor: Voga/contra-voga
     [1, 1, 0, 0, 0, 0],  # Guilherme: Voga/contra-voga
     [0, 0, 1, 0, 0, 0],  # Ricardo: hip
-    [0, 0, 1, 1, 0, 0],  # Airton: hip + 4
-    [0, 0, 0, 1, 0, 0],  # Everson: 4
-    [0, 0, 0, 0, 1, 0],  # Sergio: 5
+    [0, 0, 0, 0, 5, 0],  # Airton: 5
+    [0, 0, 1, 1, 0, 0],  # Everson: hip+4
+    [0, 0, 1, 1, 0, 0],  # Sergio: hip+4
     [0, 0, 0, 0, 1, 1],  # Marcelo: 5 + leme
     [0, 0, 0, 0, 1, 1],  # Zé: 5 + leme
 ])
@@ -93,7 +93,7 @@ fig, ax = plt.subplots(figsize=(10, 6))
 im = ax.imshow(eligibility, cmap='Blues', aspect='auto')
 
 ax.set_xticks(range(6))
-ax.set_xticklabels(['Banco 1\n(Proa)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)'])
+ax.set_xticklabels(['Banco 1 (Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6 (Leme)'])
 ax.set_yticks(range(9))
 ax.set_yticklabels(paddlers['name'])
 
@@ -157,10 +157,10 @@ Testamos durações de turno entre **10 e 20 minutos** para encontrar o tempo ó
 
 results = optimize_stint_range(
     paddlers,
-    stint_range=range(10, 20),
+    stint_range=range(8, 20),
     seat_eligibility=eligibility,
     seat_weights=[1.05, 1.02, 1.02, 1.01, 1.00, 1.10],
-    seat_entry_weights=[1, 1.2, 1.2, 1.2, 1.2, 1],
+    seat_entry_weights=[1, 1.2, 1.2, 1.2, 2, 1],
     paddler_ability=habilidade,
     distance_km=DISTANCIA_KM,
     speed_kmh=VELOCIDADE_KMH,
@@ -274,34 +274,7 @@ for name, rule in results['best']['cycle_rules'].items():
     print(f"  {name:12} {rule}")
 ```
 
-```{mermaid}
-flowchart TB
-    subgraph Stint1["turno 1"]
-        S1B1[Eduardo] --> S1B2[Vitor]
-        S1B2 --> S1B3[Airton]
-        S1B3 --> S1B4[Sergio]
-        S1B4 --> S1B5[Everson]
-        S1B5 --> S1B6[Marcelo]
-    end
 
-    subgraph Stint2["turno 2"]
-        S2B1[Vitor] --> S2B2[Guilherme]
-        S2B2 --> S2B3[Ricardo]
-        S2B3 --> S2B4[Airton]
-        S2B4 --> S2B5[Sergio]
-        S2B5 --> S2B6[Zé]
-    end
-
-    subgraph Stint3["turno 3"]
-        S3B1[Guilherme] --> S3B2[Eduardo]
-        S3B2 --> S3B3[Ricardo]
-        S3B3 --> S3B4[Everson]
-        S3B4 --> S3B5[Marcelo]
-        S3B5 --> S3B6[Zé]
-    end
-
-    turno1 --> turno2 --> turno3 --> turno1
-```
 
 ### Cronograma Completo
 

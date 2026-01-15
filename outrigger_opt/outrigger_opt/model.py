@@ -3,7 +3,7 @@ import itertools, math
 import pandas as pd
 import numpy as np
 from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus, value, PULP_CBC_CMD
-from .fatigue import compute_output_table
+from .fatigue import compute_output_table, compute_cycle_output_table, power_to_speed
 
 
 def validate_paddlers(paddlers, n_seats=6, n_paddlers=9):
@@ -171,7 +171,11 @@ def solve_rotation_cycle(paddlers,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
-                         gap_tolerance=0.01):
+                         gap_tolerance=0.01,
+                         fatigue_work_rate=0.015,
+                         fatigue_tau_recovery=7,
+                         use_stateful_fatigue=True,
+                         power_speed_exponent=0.4):
     """Solve the crew rotation optimization using a cycle-based model.
 
     Models a single rotation cycle instead of the entire race, with wrap-around
@@ -202,6 +206,11 @@ def solve_rotation_cycle(paddlers,
         n_resting: Number of paddlers resting each stint (default 3)
         solver_time_secs: Maximum solver computation time in seconds (default 60)
         gap_tolerance: Acceptable gap from optimal (default 0.01 = 1%)
+        fatigue_work_rate: W' depletion per minute of work (default 0.015 = 15% per 10 min)
+        fatigue_tau_recovery: Recovery time constant in minutes (default 7, half-life ~5 min)
+        use_stateful_fatigue: Use stateful fatigue model for race simulation (default True)
+        power_speed_exponent: Exponent for power-to-speed conversion (default 0.4).
+                             speed = power^exponent. Use 1.0 for linear (legacy behavior).
 
     Returns:
         dict with 'status', 'schedule', 'cycle_schedule', 'avg_output', 'race_time',
@@ -405,6 +414,22 @@ def solve_rotation_cycle(paddlers,
                             num += seat_weights[s] * output_table[k] * paddler_ability[p]
         steady_stint_outputs.append(num / den)
 
+    # Extract cycle pattern from solution (True = paddling)
+    cycle_pattern = {}
+    for p in range(P):
+        cycle_pattern[p] = [
+            R[p, t].value() is not None and R[p, t].value() < 0.5
+            for t in range(cycle_length)
+        ]
+
+    # Compute cycle output table using stateful fatigue model
+    if use_stateful_fatigue:
+        cycle_output_table = compute_cycle_output_table(
+            cycle_pattern, stint_min,
+            work_rate=fatigue_work_rate,
+            tau_recovery=fatigue_tau_recovery
+        )
+
     # Exact race simulation stint-by-stint
     # This handles fresh start, wrap-around, and partial cycles correctly
     stint_outputs = []
@@ -436,20 +461,27 @@ def solve_rotation_cycle(paddlers,
         num = 0
         for p in range(P):
             if paddling_this_stint[p]:
-                k = min(consecutive[p], max_consecutive)
-                if k > 0:
-                    num += output_table[k] * paddler_ability[p]
+                if use_stateful_fatigue:
+                    # Use precomputed cycle output from stateful fatigue model
+                    num += cycle_output_table[p][cycle_t] * paddler_ability[p]
+                else:
+                    # Fallback: use consecutive-count-based output
+                    k = min(consecutive[p], max_consecutive)
+                    if k > 0:
+                        num += output_table[k] * paddler_ability[p]
         stint_outputs.append(num / S)  # S seats with uniform weight 1.0
 
     # Calculate race time from exact stint outputs
-    total_output = sum(stint_outputs)
-    avg_output = total_output / n_stints
+    # Convert power outputs to speed using drag model
+    stint_speeds = [power_to_speed(p, power_speed_exponent) for p in stint_outputs]
+    avg_output = sum(stint_outputs) / n_stints  # Keep power for stats
+    avg_speed = sum(stint_speeds) / n_stints
 
     steady_cycle_output = sum(steady_stint_outputs)  # Keep for stats
 
     nominal = distance_km / speed_kmh * 60
     switches = n_stints - 1
-    race_time = nominal / avg_output + switches * switch_time_min
+    race_time = nominal / avg_speed + switches * switch_time_min
 
     # Expand cycle to full race schedule
     full_sched = expand_cycle_to_race(cycle_sched, cycle_length, n_stints)
