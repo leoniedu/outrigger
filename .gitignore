@@ -19,6 +19,10 @@ build/
 venv/
 .env
 
+# LaTeX
+texput.log
+*.aux
+
 # R session files (if using R interactively)
 .Rhistory
 .RData
