@@ -157,7 +157,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="configuração-da-prova" class="level2">
 <h2 class="anchored" data-anchor-id="configuração-da-prova">Configuração da Prova</h2>
-<div id="c8b42928" class="cell" data-execution_count="1">
+<div id="8689798d" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
@@ -174,7 +174,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="tripulação" class="level3">
 <h3 class="anchored" data-anchor-id="tripulação">Tripulação</h3>
 <p>A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.</p>
-<div id="94199fe8" class="cell" data-execution_count="2">
+<div id="23c9c2d9" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>paddlers <span class="op">=</span> pd.DataFrame({</span>
@@ -352,7 +352,7 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 </figure>
 </div>
 </div>
-<div id="443e2b2d" class="cell" data-execution_count="4">
+<div id="7dc6aff1" class="cell" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
@@ -474,7 +474,7 @@ Por que turnos curtos?
 <section id="otimização" class="level2">
 <h2 class="anchored" data-anchor-id="otimização">Otimização</h2>
 <p>Testamos durações de turno entre <strong>10 e 20 minutos</strong> para encontrar o tempo ótimo.</p>
-<div id="c9835d1b" class="cell" data-execution_count="5">
+<div id="c1e3ceb4" class="cell" data-execution_count="5">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> optimize_stint_range(</span>
@@ -747,7 +747,7 @@ Configuração Recomendada
 <section id="regras-de-rotação" class="level3">
 <h3 class="anchored" data-anchor-id="regras-de-rotação">Regras de Rotação</h3>
 <p>Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:</p>
-<div id="d4a9d8d2" class="cell" data-execution_count="9">
+<div id="0c49bab8" class="cell" data-execution_count="9">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Ciclo de Rotação (repete a cada 3 turnos):</span><span class="ch">\n</span><span class="st">"</span>)</span>
@@ -1193,7 +1193,7 @@ Figure&nbsp;3: Mapa de calor do cronograma de rotação
 </section>
 <section id="resumo" class="level2">
 <h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
-<div id="7c49ce4a" class="cell" data-execution_count="12">
+<div id="d60a0060" class="cell" data-execution_count="12">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>

@@ -34,8 +34,8 @@ from outrigger_opt import optimize_stint_range, solve_rotation_cycle
 
 # Configuração da prova
 DISTANCIA_KM = 60
-VELOCIDADE_KMH = 9.8
-TEMPO_TROCA_MIN = .5
+VELOCIDADE_KMH = 10
+TEMPO_TROCA_SECS = 20
 ```
 
 ### Tripulação
@@ -70,7 +70,7 @@ eligibility = np.array([
     [1, 1, 0, 0, 0, 0],  # Vitor: Voga/contra-voga
     [1, 1, 0, 0, 0, 0],  # Guilherme: Voga/contra-voga
     [0, 0, 1, 0, 0, 0],  # Ricardo: hip
-    [0, 0, 0, 0, 5, 0],  # Airton: 5
+    [0, 0, 0, 0, 1, 0],  # Airton: 5
     [0, 0, 1, 1, 0, 0],  # Everson: hip+4
     [0, 0, 1, 1, 0, 0],  # Sergio: hip+4
     [0, 0, 0, 0, 1, 1],  # Marcelo: 5 + leme
@@ -81,7 +81,7 @@ eligibility = np.array([
 df_elig = pd.DataFrame(
     eligibility,
     index=paddlers['name'],
-    columns=['Banco 1\n(Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)']
+    columns=['Banco 1 (Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6 (Leme)']
 )
 df_elig.replace({1: '✓', 0: ''})
 ```
@@ -89,18 +89,33 @@ df_elig.replace({1: '✓', 0: ''})
 ```{python}
 #| fig-cap: "Mapa de elegibilidade dos remadores"
 
+# Calculate average and std of eligible seat positions for each paddler
+seat_positions = np.arange(1, 7)  # 1-6
+paddler_stats = []
+for i, name in enumerate(paddlers['name']):
+    eligible_seats = seat_positions[eligibility[i] == 1]
+    avg_seat = eligible_seats.mean()
+    std_seat = eligible_seats.std() if len(eligible_seats) > 1 else 0
+    paddler_stats.append((i, name, avg_seat, std_seat))
+
+# Sort by average (increasing), then by std (decreasing)
+paddler_stats.sort(key=lambda x: (x[2], -x[3]))
+sorted_indices = [s[0] for s in paddler_stats]
+sorted_names = [s[1] for s in paddler_stats]
+sorted_eligibility = eligibility[sorted_indices]
+
 fig, ax = plt.subplots(figsize=(10, 6))
-im = ax.imshow(eligibility, cmap='Blues', aspect='auto')
+im = ax.imshow(sorted_eligibility, cmap='Blues', aspect='auto')
 
 ax.set_xticks(range(6))
 ax.set_xticklabels(['Banco 1 (Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6 (Leme)'])
 ax.set_yticks(range(9))
-ax.set_yticklabels(paddlers['name'])
+ax.set_yticklabels(sorted_names)
 
 # Adicionar texto nas células
 for i in range(9):
     for j in range(6):
-        text = '✓' if eligibility[i, j] == 1 else ''
+        text = '✓' if sorted_eligibility[i, j] == 1 else ''
         ax.text(j, i, text, ha='center', va='center', fontsize=14)
 
 ax.set_title('Matriz de Elegibilidade', fontsize=14, fontweight='bold')
@@ -120,33 +135,29 @@ Para a equipe **Caveiras**, invertemos esse padrão:
 
 ::: {.callout-note}
 ## Adaptação para Caveiras
-**Proa**: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.
+**Voga**: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.
 
-*Justificativa*: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de primeira. Melhor entrar no 2, esquentar e ir pro 1.
+*Justificativa*: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de imediato. Melhor entrar no 2, esquentar e acompanhar o voga anterior, e só depois ir pro 1.
 
-**Popa**: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.
+**Leme**: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.
 :::
 
 ### Pesos de Entrada (`seat_entry_weights`)
 
-Os pesos refletem a dificuldade/preferência de entrada em cada banco:
+Os pesos refletem a preferência de entrada em cada banco (maior = preferido para entrada):
 
-| Banco | Peso | Justificativa |
-|-------|------|---------------|
-| 1 (Voga) | 1.0 | Fácil de subir, mas prefere-se entrar aquecido |
-| 2 | 2.0 | Banco preferido para entrada — esquenta antes de ir pro 1 |
-| 3 | 1.2 | Ricardo é o nosso Hip principal  |
-| 4 | 1.2 | Meio — sem grande diferença |
-| 5 | 1.2 | Entrada padrão da popa |
-| 6 (Leme) | 1.0 | Alguns têm dificuldade de subir |
+```{python}
+seat_entry_weights = [1, 1.2, 1.2, 1.2, 2, 1]
+seat_names = ['Banco 1 (Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6 (Leme)']
+
+pd.DataFrame({
+    'Banco': seat_names,
+    'Peso': seat_entry_weights
+}).set_index('Banco')
+```
 
 ### Duração do turno
 
-::: {.callout-important}
-## Por que turnos curtos?
-
-Achava que poderia ser tipo 30 min remando, 15 min descansando. Mas tem que ser **curto mesmo** — 10 a 13 minutos. Se não cansa de mais. Com mais trocas, a troca é "traumática" para alguns de nós. 
-:::
 
 ## Otimização
 
@@ -160,11 +171,11 @@ results = optimize_stint_range(
     stint_range=range(8, 20),
     seat_eligibility=eligibility,
     seat_weights=[1.05, 1.02, 1.02, 1.01, 1.00, 1.10],
-    seat_entry_weights=[1, 1.2, 1.2, 1.2, 2, 1],
+    seat_entry_weights=seat_entry_weights,
     paddler_ability=habilidade,
     distance_km=DISTANCIA_KM,
     speed_kmh=VELOCIDADE_KMH,
-    switch_time_min=TEMPO_TROCA_MIN,
+    switch_time_secs=TEMPO_TROCA_SECS,
     max_consecutive=3,
     solver_time_secs=60,
     gap_tolerance=0.001,
@@ -193,9 +204,9 @@ ax.scatter([best_stint], [best_time], color='red', s=200, zorder=5, label=f'Óti
 ax.axhline(y=best_time, color='red', linestyle='--', alpha=0.5)
 ax.axvline(x=best_stint, color='red', linestyle='--', alpha=0.5)
 
-ax.set_xlabel('Duração do turno (minutos)', fontsize=12)
+ax.set_xlabel('Duração do Turno (minutos)', fontsize=12)
 ax.set_ylabel('Tempo Total de Prova (minutos)', fontsize=12)
-ax.set_title('Otimização da Duração do turno', fontsize=14, fontweight='bold')
+ax.set_title('Otimização da Duração do Turno', fontsize=14, fontweight='bold')
 ax.legend()
 ax.grid(True, alpha=0.3)
 
@@ -218,10 +229,13 @@ plt.show()
 
 summary_display = summary.copy()
 summary_display['race_time_hours'] = summary_display['race_time'] / 60
-summary_display.columns = ['turno (min)', 'Nº turnos', 'Output Médio', 'Tempo (min)', 'Tempo (horas)']
+summary_display['speed'] = DISTANCIA_KM / summary_display['race_time_hours']
+summary_display.columns = ['Turno (min)', 'Nº turnos', 'Output Médio', 'Tempo (min)', 'Tempo (horas)', 'Velocidade (km/h)']
 summary_display['Output Médio'] = summary_display['Output Médio'].apply(lambda x: f'{x:.1%}')
-summary_display['Tempo (min)'] = summary_display['Tempo (min)'].apply(lambda x: f'{x:.1f}')
 summary_display['Tempo (horas)'] = summary_display['Tempo (horas)'].apply(lambda x: f'{x:.2f}')
+summary_display['Velocidade (km/h)'] = summary_display['Velocidade (km/h)'].apply(lambda x: f'{x:.2f}')
+summary_display = summary_display.drop(columns=['Tempo (min)'])
+summary_display.set_index('Turno (min)', inplace=True)
 summary_display
 ```
 
@@ -234,7 +248,7 @@ summary_display
 fig, ax1 = plt.subplots(figsize=(10, 6))
 
 color1 = 'tab:blue'
-ax1.set_xlabel('Duração do turno (minutos)', fontsize=12)
+ax1.set_xlabel('Duração do Turno (minutos)', fontsize=12)
 ax1.set_ylabel('Número de Trocas', color=color1, fontsize=12)
 ax1.plot(summary['stint_min'], summary['n_stints'] - 1, color=color1, marker='s', linewidth=2, label='Trocas')
 ax1.tick_params(axis='y', labelcolor=color1)
@@ -276,60 +290,79 @@ for name, rule in results['best']['cycle_rules'].items():
 
 
 
-### Cronograma Completo
+### Ciclo de Rotação
+
+O cronograma segue um ciclo de **3 turnos que se repete** durante toda a prova:
 
 ```{python}
 #| label: tbl-schedule
-#| tbl-cap: "Cronograma completo da prova"
-
+#| tbl-cap: "Ciclo de rotação (turnos 1-3 se repetem)"
 
 schedule = results['best']['schedule'].copy()
 schedule.columns = schedule.columns.str.strip()
-schedule.index.name = 'Stint'
 
-# Rename seats
-schedule.columns = ['Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']
-
-# Add durations (minutes per stint)
-schedule['Tempo (min)'] = results['best']['stint_min']
-
-# Add pretty hh:mm
-schedule['Tempo'] = schedule['Tempo (min)'].apply(lambda x: f'{x//60:.0f}h{x%60:02.0f}')
-
-schedule[['Tempo', 'Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']]
-
-
-# Adicionar coluna de tempo
-schedule['Tempo'] = schedule['Tempo (min)'].apply(lambda x: f'{x//60:.0f}h{x%60:02.0f}')
-
-schedule[['Tempo', 'Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']]
+# Show 6 rows (2 full cycles) to make pattern obvious
+n_rows = min(6, len(schedule))
+cycle = schedule.head(n_rows).copy()
+cycle.index = [f'Turno {i+1}' for i in range(n_rows)]
+cycle.columns = ['Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']
+cycle
 ```
-
-### Visualização do Cronograma
 
 ```{python}
 #| label: fig-heatmap
-#| fig-cap: "Mapa de calor do cronograma de rotação"
+#| fig-cap: "Ciclo de rotação (turnos 1-3 se repetem)"
+from matplotlib.patches import Rectangle
 
-schedule_matrix = results['best']['schedule'].copy()
+# Show 6 rows (2 full cycles)
+n_rows = min(6, len(results['best']['schedule']))
+schedule_matrix = results['best']['schedule'].head(n_rows).copy()
+all_paddlers = set(paddlers['name'])
+
+# Build matrix with paddlers out (resting)
+out_matrix = []
+for i in range(n_rows):
+    in_canoe = set(schedule_matrix.iloc[i].values)
+    out = sorted(all_paddlers - in_canoe)
+    out_matrix.append(out)
+out_df = pd.DataFrame(out_matrix, columns=['Fora 1', 'Fora 2', 'Fora 3'])
+
+# Combine in and out (9 columns total)
+combined = pd.concat([schedule_matrix.reset_index(drop=True), out_df], axis=1)
 paddler_to_num = {name: i for i, name in enumerate(paddlers['name'])}
-schedule_numeric = schedule_matrix.replace(paddler_to_num)
+combined_numeric = combined.replace(paddler_to_num)
 
-fig, ax = plt.subplots(figsize=(12, 10))
-im = ax.imshow(schedule_numeric.values, cmap='tab10', aspect='auto')
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), gridspec_kw={'width_ratios': [6, 3], 'wspace': 0.05})
 
-ax.set_xticks(range(6))
-ax.set_xticklabels(['Banco 1\n(Proa)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)'])
-ax.set_yticks(range(len(schedule_matrix)))
-ax.set_yticklabels([f'Stint {i+1}' for i in range(len(schedule_matrix))])
+# Left plot: seats (in canoe)
+im1 = ax1.imshow(combined_numeric.iloc[:, :6].values, cmap='tab10', aspect='auto')
+ax1.set_xticks(range(6))
+ax1.set_xticklabels(['Banco 1\n(Proa)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)'])
+ax1.set_yticks(range(n_rows))
+ax1.set_yticklabels([f'Turno {i+1}' for i in range(n_rows)])
 
-# Adicionar nomes nas células
-for i in range(len(schedule_matrix)):
+for i in range(n_rows):
     for j in range(6):
-        name = schedule_matrix.iloc[i, j]
-        ax.text(j, i, name[:3], ha='center', va='center', fontsize=8, fontweight='bold', color='white')
+        name = combined.iloc[i, j]
+        ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
 
-ax.set_title('Cronograma de Rotação - Desafio 60K 2025', fontsize=14, fontweight='bold')
+# Highlight first cycle
+rect = Rectangle((-0.5, -0.5), 6, 3, linewidth=3, edgecolor='yellow', facecolor='none', linestyle='--')
+ax1.add_patch(rect)
+
+# Right plot: out (resting) - same colors as left
+im2 = ax2.imshow(combined_numeric.iloc[:, 6:].values, cmap='tab10', aspect='auto')
+ax2.set_xticks(range(3))
+ax2.set_xticklabels(['Fora 1', 'Fora 2', 'Fora 3'])
+ax2.set_yticks(range(n_rows))
+ax2.set_yticklabels([])
+
+for i in range(n_rows):
+    for j in range(3):
+        name = combined.iloc[i, 6 + j]
+        ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+fig.suptitle(f'Padrão de Rotação (ciclo de 3 turnos repete {results["best"]["n_stints"] // 3}x)', fontsize=14, fontweight='bold')
 plt.tight_layout()
 plt.show()
 ```
@@ -339,17 +372,20 @@ plt.show()
 ```{python}
 n_stints = results['best']['n_stints']
 n_trocas = n_stints - 1
-tempo_remando = n_stints * best_stint * (2/3)  # cada remador rema 2 de cada 3 stints
+velocidade_efetiva = DISTANCIA_KM / (best_time / 60)  # km/h
+subidas_por_remador = n_stints / 3  # cada remador entra 1x por ciclo de 3 turnos
 ```
 
 | Métrica | Valor |
 |---------|-------|
 | Distância | `{python} DISTANCIA_KM` km |
 | Velocidade base | `{python} VELOCIDADE_KMH` km/h |
-| Duração do stint | `{python} best_stint` min |
-| Número de stints | `{python} n_stints` |
+| **Velocidade efetiva** | **`{python} f'{velocidade_efetiva:.2f}'` km/h** |
+| Duração do turno | `{python} best_stint` min |
+| Número de turnos | `{python} n_stints` |
 | Número de trocas | `{python} n_trocas` |
-| Tempo por troca | `{python} TEMPO_TROCA_MIN` min |
+| Subidas por remador | `{python} f'{subidas_por_remador:.1f}'` (média) |
+| Tempo por troca | `{python} TEMPO_TROCA_SECS` s |
 | **Tempo total** | **`{python} f'{best_time:.1f}'` min** (`{python} f'{best_time/60:.1f}'` h) |
 
 ---

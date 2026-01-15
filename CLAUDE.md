@@ -9,7 +9,7 @@ This project uses `uv` for Python package management. Always use `uv run` to exe
 uv run python script.py
 
 # Run examples
-cd outrigger_opt && uv run python example.py 6
+cd python && uv run python example.py 6
 
 # Run tests
 uv run pytest
@@ -19,10 +19,11 @@ Do NOT use bare `python` or `python3` commands - they will fail due to system Py
 
 ## Project Structure
 
-- `outrigger_opt/` - Python package for rotation optimization (MIP solver)
-  - `outrigger_opt/model.py` - Core MIP solvers (`solve_rotation_full`, `solve_rotation_cycle`)
-  - `outrigger_opt/fatigue.py` - Fatigue curve functions
-  - `outrigger_opt/meta.py` - Meta-optimization over stint durations
+- `python/` - Python project directory
+  - `outrigger_opt/` - Main package (MIP solver for rotation optimization)
+    - `model.py` - Core MIP solver (`solve_rotation_cycle`)
+    - `fatigue.py` - Fatigue curve functions
+    - `meta.py` - Meta-optimization over stint durations
   - `example.py` - Usage examples (run with `uv run python example.py [1-6]`)
 
 ## Key Documentation

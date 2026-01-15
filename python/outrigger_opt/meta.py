@@ -7,7 +7,7 @@ def optimize_stint_range(paddlers,
                          max_consecutive=6,
                          distance_km=60,
                          speed_kmh=10,
-                         switch_time_min=1.5,
+                         switch_time_secs=90,
                          seat_eligibility=None,
                          seat_weights=None,
                          seat_entry_weights=None,
@@ -24,7 +24,7 @@ def optimize_stint_range(paddlers,
         max_consecutive: Maximum consecutive stints (variable bound)
         distance_km: Race distance in kilometers
         speed_kmh: Base speed at output 1.0 in km/h
-        switch_time_min: Time penalty per crew switch in minutes
+        switch_time_secs: Time penalty per crew switch in seconds
         seat_eligibility: Optional (n_paddlers, n_seats) eligibility matrix
         seat_weights: Optional list of seat importance weights
         seat_entry_weights: Optional list of entry ease weights per seat
@@ -46,7 +46,7 @@ def optimize_stint_range(paddlers,
             max_consecutive=max_consecutive,
             distance_km=distance_km,
             speed_kmh=speed_kmh,
-            switch_time_min=switch_time_min,
+            switch_time_secs=switch_time_secs,
             seat_eligibility=seat_eligibility,
             seat_weights=seat_weights,
             seat_entry_weights=seat_entry_weights,

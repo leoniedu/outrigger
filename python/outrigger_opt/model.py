@@ -73,7 +73,7 @@ def validate_eligibility(eligibility, n_paddlers, n_seats):
             raise ValueError(f"Paddler {p} is not eligible for any seat")
 
 
-def validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_min):
+def validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_secs):
     """Validate optimization parameters.
 
     Raises:
@@ -87,8 +87,8 @@ def validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_t
         raise ValueError(f"distance_km must be positive, got {distance_km}")
     if speed_kmh <= 0:
         raise ValueError(f"speed_kmh must be positive, got {speed_kmh}")
-    if switch_time_min < 0:
-        raise ValueError(f"switch_time_min must be non-negative, got {switch_time_min}")
+    if switch_time_secs < 0:
+        raise ValueError(f"switch_time_secs must be non-negative, got {switch_time_secs}")
 
 
 def expand_cycle_to_race(cycle_schedule, cycle_length, n_stints):
@@ -117,9 +117,9 @@ def format_cycle_rules(cycle_schedule, paddlers):
 
     Returns:
         dict mapping paddler name to rule string
-        e.g. {'Eduardo': 'Seat 3 → Seat 6 → Rest*'}
+        e.g. {'Eduardo': 'Banco 3 → Banco 6 → Descanso*'}
         where * marks the starting position (stint 0)
-        Rules are rotated so Rest is always last.
+        Rules are rotated so Descanso is always last.
     """
     rules = {}
     cycle_length = len(cycle_schedule)
@@ -132,15 +132,15 @@ def format_cycle_rules(cycle_schedule, paddlers):
             found = False
             for col in cycle_schedule.columns:
                 if cycle_schedule.iloc[t][col] == name:
-                    seat_num = col.replace('seat', '')
-                    positions.append((f"Seat {seat_num}", t == 0))
+                    seat_num = col.replace('Banco ', '')
+                    positions.append((f"Banco {seat_num}", t == 0))
                     found = True
                     break
             if not found:
-                positions.append(("Rest", t == 0))
+                positions.append(("Descanso", t == 0))
 
-        # Rotate so Rest is last
-        rest_idx = next((i for i, (pos, _) in enumerate(positions) if pos == "Rest"), None)
+        # Rotate so Descanso is last
+        rest_idx = next((i for i, (pos, _) in enumerate(positions) if pos == "Descanso"), None)
         if rest_idx is not None and rest_idx < cycle_length - 1:
             # Rotate: move everything before rest to after rest
             positions = positions[rest_idx + 1:] + positions[:rest_idx + 1]
@@ -163,7 +163,7 @@ def solve_rotation_cycle(paddlers,
                          max_consecutive=6,
                          distance_km=60,
                          speed_kmh=10,
-                         switch_time_min=1.5,
+                         switch_time_secs=90,
                          seat_eligibility=None,
                          seat_weights=None,
                          seat_entry_weights=None,
@@ -194,7 +194,7 @@ def solve_rotation_cycle(paddlers,
         max_consecutive: Maximum consecutive stints (variable bound)
         distance_km: Race distance in kilometers
         speed_kmh: Base speed at output 1.0 in km/h
-        switch_time_min: Time penalty per crew switch in minutes
+        switch_time_secs: Time penalty per crew switch in seconds
         seat_eligibility: Optional (n_paddlers, n_seats) matrix where 1 = paddler can sit in seat.
                          If None, all paddlers are eligible for all seats.
         seat_weights: Optional list of seat importance weights. Default [1.2, 1.1, 0.9, 0.9, 0.9, 1.1]
@@ -219,7 +219,7 @@ def solve_rotation_cycle(paddlers,
     # Validate inputs
     n_paddlers = n_seats + n_resting
     paddlers = validate_paddlers(paddlers, n_seats=n_seats, n_paddlers=n_paddlers)
-    validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_min)
+    validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_secs)
 
     P = len(paddlers)
     S = n_seats
@@ -370,7 +370,7 @@ def solve_rotation_cycle(paddlers,
 
     if use_entry_weights:
         nominal_paddle_time = distance_km / speed_kmh * 60
-        entry_weight_scale = switch_time_min / nominal_paddle_time * sum(seat_weights)
+        entry_weight_scale = (switch_time_secs / 60) / nominal_paddle_time * sum(seat_weights)
         # t=0 entries only happen (n_cycles - 1) times (first stint of race is free)
         # t>0 entries happen n_cycles times
         n_cycles = n_stints / cycle_length
@@ -394,7 +394,7 @@ def solve_rotation_cycle(paddlers,
     prob.solve(solver)
 
     # Extract cycle schedule
-    cycle_sched = pd.DataFrame("-", index=range(cycle_length), columns=[f"seat{s+1}" for s in range(S)])
+    cycle_sched = pd.DataFrame("-", index=range(cycle_length), columns=[f"Banco {s+1}" for s in range(S)])
     for (p,s,t), var in X.items():
         if var.value() and var.value() > 0.5:
             cycle_sched.iloc[t,s] = paddlers.name.iloc[p]
@@ -481,7 +481,7 @@ def solve_rotation_cycle(paddlers,
 
     nominal = distance_km / speed_kmh * 60
     switches = n_stints - 1
-    race_time = nominal / avg_speed + switches * switch_time_min
+    race_time = nominal / avg_speed + switches * (switch_time_secs / 60)
 
     # Expand cycle to full race schedule
     full_sched = expand_cycle_to_race(cycle_sched, cycle_length, n_stints)

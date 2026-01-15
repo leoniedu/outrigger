@@ -45,7 +45,7 @@ def main():
         paddler_ability=[1.02, 1.01, 1, 1, 1, 1.01, .99, 1, 1.02],
         distance_km=60,
         speed_kmh=10,
-        switch_time_min=.25,
+        switch_time_secs=15,
         max_consecutive=3,
         solver_time_secs=60,
         gap_tolerance=0.001,

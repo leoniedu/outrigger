@@ -30,9 +30,9 @@ stint_min = st.sidebar.number_input(
     "Stint Duration (min)",
     min_value=5, max_value=120, value=20, step=1
 )
-switch_time_min = st.sidebar.number_input(
-    "Switch Time (min)",
-    min_value=0.0, max_value=10.0, value=1.0, step=0.5
+switch_time_secs = st.sidebar.number_input(
+    "Switch Time (s)",
+    min_value=0, max_value=300, value=60, step=10
 )
 max_consecutive = st.sidebar.number_input(
     "Max Consecutive Stints",
@@ -198,7 +198,7 @@ if st.button("Run Optimization", type="primary", use_container_width=True):
                     max_consecutive=max_consecutive,
                     distance_km=distance_km,
                     speed_kmh=speed_kmh,
-                    switch_time_min=switch_time_min,
+                    switch_time_secs=switch_time_secs,
                     seat_eligibility=eligibility,
                     seat_weights=seat_weights,
                     seat_entry_weight=seat_entry_weight,

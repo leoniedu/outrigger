@@ -27,7 +27,7 @@ def example_basic():
         stint_min=30,
         distance_km=60,
         speed_kmh=9.5,
-        switch_time_min=1,
+        switch_time_secs=60,
         solver_time_secs=30
     )
 
@@ -82,7 +82,7 @@ def example_custom_eligibility():
         distance_km=60,
         speed_kmh=10,
         solver_time_secs=60,
-        switch_time_min=0.5,
+        switch_time_secs=30,
         max_consecutive=3,
         gap_tolerance=0.001,
     )
