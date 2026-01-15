@@ -1,6 +1,6 @@
 import numpy as np
 
-def output_curve(tau, start=0.8, peak=12, plateau=10, decay=0.01):
+def output_curve(tau, start=0.85, peak=10, plateau=10, decay=0.01):
     if tau <= peak:
         return start * (1/start)**(tau/peak)
     if tau <= peak + plateau:

@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 outrigger_opt/__init__.py
+outrigger_opt/brute.py
 outrigger_opt/fatigue.py
 outrigger_opt/meta.py
 outrigger_opt/model.py

@@ -1,0 +1,384 @@
+---
+title: "Desafio 60K 2025 - Otimização de Rotação"
+subtitle: "Análise de revezamento para canoa havaiana OC6"
+author: "Outrigger Optimizer"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: cosmo
+execute:
+  warning: false
+---
+
+## Introdução
+
+Este documento apresenta a análise de otimização de rotação para o **Desafio 60K 2025**.
+O objetivo é encontrar a duração ideal de cada turno (período de remada) que minimize o tempo total de prova, considerando:
+
+- **Fadiga**: remadores perdem eficiência ao longo de turnos consecutivos
+- **Trocas**: cada troca de tripulação adiciona tempo à prova
+- **Elegibilidade**: cada remador só pode ocupar determinados bancos
+
+
+
+## Configuração da Prova
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from outrigger_opt import optimize_stint_range, solve_rotation_cycle
+
+# Configuração da prova
+DISTANCIA_KM = 60
+VELOCIDADE_KMH = 9.8
+TEMPO_TROCA_MIN = 0
+```
+
+### Tripulação
+
+A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.
+
+```{python}
+paddlers = pd.DataFrame({
+    'name': ['Eduardo', 'Vitor', 'Guilherme', 'Ricardo', 'Airton',
+             'Everson', 'Sergio', 'Marcelo', 'Zé']
+})
+
+# Habilidade relativa de cada remador (1.0 = média)
+habilidade = [1.01, 1, 1, 1, 1, 1.03, 1, 1, 1.02]
+
+print("Tripulação e habilidades:")
+for nome, hab in zip(paddlers['name'], habilidade):
+    #emoji = "💪" if hab > 1.0 else ("😴" if hab < 1.0 else "")
+    print(f"  {nome}: {hab:.0%}")
+```
+
+### Matriz de Elegibilidade
+
+Cada remador só pode ocupar determinados bancos, baseado em sua experiência e posição preferida.
+
+```{python}
+#| label: tbl-elegibilidade
+#| tbl-cap: "Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)"
+
+eligibility = np.array([
+    [1, 1, 0, 0, 0, 0],  # Eduardo: Voga/contra-voga
+    [1, 1, 0, 0, 0, 0],  # Vitor: Voga/contra-voga
+    [1, 1, 0, 0, 0, 0],  # Guilherme: Voga/contra-voga
+    [0, 0, 1, 0, 0, 0],  # Ricardo: hip
+    [0, 0, 1, 1, 0, 0],  # Airton: hip + 4
+    [0, 0, 0, 1, 0, 0],  # Everson: 4
+    [0, 0, 0, 0, 1, 0],  # Sergio: 5
+    [0, 0, 0, 0, 1, 1],  # Marcelo: 5 + leme
+    [0, 0, 0, 0, 1, 1],  # Zé: 5 + leme
+])
+
+# Criar DataFrame para visualização
+df_elig = pd.DataFrame(
+    eligibility,
+    index=paddlers['name'],
+    columns=['Banco 1\n(Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)']
+)
+df_elig.replace({1: '✓', 0: ''})
+```
+
+```{python}
+#| fig-cap: "Mapa de elegibilidade dos remadores"
+
+fig, ax = plt.subplots(figsize=(10, 6))
+im = ax.imshow(eligibility, cmap='Blues', aspect='auto')
+
+ax.set_xticks(range(6))
+ax.set_xticklabels(['Banco 1\n(Proa)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)'])
+ax.set_yticks(range(9))
+ax.set_yticklabels(paddlers['name'])
+
+# Adicionar texto nas células
+for i in range(9):
+    for j in range(6):
+        text = '✓' if eligibility[i, j] == 1 else ''
+        ax.text(j, i, text, ha='center', va='center', fontsize=14)
+
+ax.set_title('Matriz de Elegibilidade', fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.show()
+```
+
+## Justificativa dos Parâmetros
+
+### Padrão de Entrada nos Bancos
+
+A rotação tradicional (equipes experientes) segue o padrão:
+
+- **Voga**: Remador descansado entra no **banco 1 (voga)** e passa pro 2 na troca seguinte — assim o voga está sempre "fresco" (lá ele)
+
+Para a equipe **Caveiras**, invertemos esse padrão:
+
+::: {.callout-note}
+## Adaptação para Caveiras
+**Proa**: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.
+
+*Justificativa*: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de primeira. Melhor entrar no 2, esquentar e ir pro 1.
+
+**Popa**: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.
+:::
+
+### Pesos de Entrada (`seat_entry_weights`)
+
+Os pesos refletem a dificuldade/preferência de entrada em cada banco:
+
+| Banco | Peso | Justificativa |
+|-------|------|---------------|
+| 1 (Voga) | 1.0 | Fácil de subir, mas prefere-se entrar aquecido |
+| 2 | 2.0 | Banco preferido para entrada — esquenta antes de ir pro 1 |
+| 3 | 1.2 | Ricardo é o nosso Hip principal  |
+| 4 | 1.2 | Meio — sem grande diferença |
+| 5 | 1.2 | Entrada padrão da popa |
+| 6 (Leme) | 1.0 | Alguns têm dificuldade de subir |
+
+### Duração do turno
+
+::: {.callout-important}
+## Por que turnos curtos?
+
+Achava que poderia ser tipo 30 min remando, 15 min descansando. Mas tem que ser **curto mesmo** — 10 a 13 minutos. Se não cansa de mais. Com mais trocas, a troca é "traumática" para alguns de nós. 
+:::
+
+## Otimização
+
+Testamos durações de turno entre **10 e 20 minutos** para encontrar o tempo ótimo.
+
+```{python}
+#| output: false
+
+results = optimize_stint_range(
+    paddlers,
+    stint_range=range(10, 20),
+    seat_eligibility=eligibility,
+    seat_weights=[1.05, 1.02, 1.02, 1.01, 1.00, 1.10],
+    seat_entry_weights=[1, 1.2, 1.2, 1.2, 1.2, 1],
+    paddler_ability=habilidade,
+    distance_km=DISTANCIA_KM,
+    speed_kmh=VELOCIDADE_KMH,
+    switch_time_min=TEMPO_TROCA_MIN,
+    max_consecutive=3,
+    solver_time_secs=60,
+    gap_tolerance=0.001,
+)
+```
+
+### Comparação de Tempos
+
+```{python}
+#| label: fig-comparacao
+#| fig-cap: "Tempo de prova vs. duração do turno"
+
+summary = results['summary']
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Gráfico principal
+ax.plot(summary['stint_min'], summary['race_time'], 'b-o', linewidth=2, markersize=8)
+
+# Destacar o melhor
+best_idx = summary['race_time'].idxmin()
+best_stint = int(summary.loc[best_idx, 'stint_min'])
+best_time = summary.loc[best_idx, 'race_time']
+
+ax.scatter([best_stint], [best_time], color='red', s=200, zorder=5, label=f'Ótimo: {best_stint} min')
+ax.axhline(y=best_time, color='red', linestyle='--', alpha=0.5)
+ax.axvline(x=best_stint, color='red', linestyle='--', alpha=0.5)
+
+ax.set_xlabel('Duração do turno (minutos)', fontsize=12)
+ax.set_ylabel('Tempo Total de Prova (minutos)', fontsize=12)
+ax.set_title('Otimização da Duração do turno', fontsize=14, fontweight='bold')
+ax.legend()
+ax.grid(True, alpha=0.3)
+
+# Adicionar anotação
+ax.annotate(f'{best_time:.1f} min\n({best_time/60:.1f} horas)',
+            xy=(best_stint, best_time),
+            xytext=(best_stint + 2, best_time + 3),
+            fontsize=11,
+            arrowprops=dict(arrowstyle='->', color='red'))
+
+plt.tight_layout()
+plt.show()
+```
+
+### Tabela de Resultados
+
+```{python}
+#| label: tbl-resultados
+#| tbl-cap: "Comparação de tempos por duração de turno"
+
+summary_display = summary.copy()
+summary_display['race_time_hours'] = summary_display['race_time'] / 60
+summary_display.columns = ['turno (min)', 'Nº turnos', 'Output Médio', 'Tempo (min)', 'Tempo (horas)']
+summary_display['Output Médio'] = summary_display['Output Médio'].apply(lambda x: f'{x:.1%}')
+summary_display['Tempo (min)'] = summary_display['Tempo (min)'].apply(lambda x: f'{x:.1f}')
+summary_display['Tempo (horas)'] = summary_display['Tempo (horas)'].apply(lambda x: f'{x:.2f}')
+summary_display
+```
+
+### Trade-off: Trocas vs. Fadiga
+
+```{python}
+#| label: fig-tradeoff
+#| fig-cap: "Análise do trade-off entre número de trocas e output médio"
+
+fig, ax1 = plt.subplots(figsize=(10, 6))
+
+color1 = 'tab:blue'
+ax1.set_xlabel('Duração do turno (minutos)', fontsize=12)
+ax1.set_ylabel('Número de Trocas', color=color1, fontsize=12)
+ax1.plot(summary['stint_min'], summary['n_stints'] - 1, color=color1, marker='s', linewidth=2, label='Trocas')
+ax1.tick_params(axis='y', labelcolor=color1)
+
+ax2 = ax1.twinx()
+color2 = 'tab:orange'
+ax2.set_ylabel('Output Médio (%)', color=color2, fontsize=12)
+ax2.plot(summary['stint_min'], summary['avg_output'] * 100, color=color2, marker='o', linewidth=2, label='Output')
+ax2.tick_params(axis='y', labelcolor=color2)
+
+# Linha vertical no ótimo
+ax1.axvline(x=best_stint, color='red', linestyle='--', alpha=0.5, label=f'Ótimo: {best_stint} min')
+
+fig.suptitle('Trade-off: Menos Trocas vs. Mais Fadiga', fontsize=14, fontweight='bold')
+fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.02), ncol=3)
+plt.tight_layout()
+plt.subplots_adjust(bottom=0.15)
+plt.show()
+```
+
+## Resultado Ótimo
+
+::: {.callout-tip}
+## Configuração Recomendada
+**Duração do turno: `{python} best_stint` minutos**
+
+Tempo estimado de prova: **`{python} f'{best_time:.1f}'` minutos** (`{python} f'{best_time/60:.1f}'` horas)
+:::
+
+### Regras de Rotação
+
+Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:
+
+```{python}
+print("Ciclo de Rotação (repete a cada 3 turnos):\n")
+for name, rule in results['best']['cycle_rules'].items():
+    print(f"  {name:12} {rule}")
+```
+
+```{mermaid}
+flowchart TB
+    subgraph Stint1["turno 1"]
+        S1B1[Eduardo] --> S1B2[Vitor]
+        S1B2 --> S1B3[Airton]
+        S1B3 --> S1B4[Sergio]
+        S1B4 --> S1B5[Everson]
+        S1B5 --> S1B6[Marcelo]
+    end
+
+    subgraph Stint2["turno 2"]
+        S2B1[Vitor] --> S2B2[Guilherme]
+        S2B2 --> S2B3[Ricardo]
+        S2B3 --> S2B4[Airton]
+        S2B4 --> S2B5[Sergio]
+        S2B5 --> S2B6[Zé]
+    end
+
+    subgraph Stint3["turno 3"]
+        S3B1[Guilherme] --> S3B2[Eduardo]
+        S3B2 --> S3B3[Ricardo]
+        S3B3 --> S3B4[Everson]
+        S3B4 --> S3B5[Marcelo]
+        S3B5 --> S3B6[Zé]
+    end
+
+    turno1 --> turno2 --> turno3 --> turno1
+```
+
+### Cronograma Completo
+
+```{python}
+#| label: tbl-schedule
+#| tbl-cap: "Cronograma completo da prova"
+
+
+schedule = results['best']['schedule'].copy()
+schedule.columns = schedule.columns.str.strip()
+schedule.index.name = 'Stint'
+
+# Rename seats
+schedule.columns = ['Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']
+
+# Add durations (minutes per stint)
+schedule['Tempo (min)'] = results['best']['stint_min']
+
+# Add pretty hh:mm
+schedule['Tempo'] = schedule['Tempo (min)'].apply(lambda x: f'{x//60:.0f}h{x%60:02.0f}')
+
+schedule[['Tempo', 'Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']]
+
+
+# Adicionar coluna de tempo
+schedule['Tempo'] = schedule['Tempo (min)'].apply(lambda x: f'{x//60:.0f}h{x%60:02.0f}')
+
+schedule[['Tempo', 'Banco 1', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6']]
+```
+
+### Visualização do Cronograma
+
+```{python}
+#| label: fig-heatmap
+#| fig-cap: "Mapa de calor do cronograma de rotação"
+
+schedule_matrix = results['best']['schedule'].copy()
+paddler_to_num = {name: i for i, name in enumerate(paddlers['name'])}
+schedule_numeric = schedule_matrix.replace(paddler_to_num)
+
+fig, ax = plt.subplots(figsize=(12, 10))
+im = ax.imshow(schedule_numeric.values, cmap='tab10', aspect='auto')
+
+ax.set_xticks(range(6))
+ax.set_xticklabels(['Banco 1\n(Proa)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6\n(Leme)'])
+ax.set_yticks(range(len(schedule_matrix)))
+ax.set_yticklabels([f'Stint {i+1}' for i in range(len(schedule_matrix))])
+
+# Adicionar nomes nas células
+for i in range(len(schedule_matrix)):
+    for j in range(6):
+        name = schedule_matrix.iloc[i, j]
+        ax.text(j, i, name[:3], ha='center', va='center', fontsize=8, fontweight='bold', color='white')
+
+ax.set_title('Cronograma de Rotação - Desafio 60K 2025', fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.show()
+```
+
+## Resumo
+
+```{python}
+n_stints = results['best']['n_stints']
+n_trocas = n_stints - 1
+tempo_remando = n_stints * best_stint * (2/3)  # cada remador rema 2 de cada 3 stints
+```
+
+| Métrica | Valor |
+|---------|-------|
+| Distância | `{python} DISTANCIA_KM` km |
+| Velocidade base | `{python} VELOCIDADE_KMH` km/h |
+| Duração do stint | `{python} best_stint` min |
+| Número de stints | `{python} n_stints` |
+| Número de trocas | `{python} n_trocas` |
+| Tempo por troca | `{python} TEMPO_TROCA_MIN` min |
+| **Tempo total** | **`{python} f'{best_time:.1f}'` min** (`{python} f'{best_time/60:.1f}'` h) |
+
+---
+
+*Gerado com [Outrigger Optimizer](https://github.com/anthropics/outrigger)*

@@ -10,6 +10,7 @@ License-File: LICENSE
 Requires-Dist: pulp>=2.8
 Requires-Dist: pandas>=2.0
 Requires-Dist: numpy>=1.23
+Requires-Dist: streamlit>=1.28
 Dynamic: license-file
 
 # outrigger_opt

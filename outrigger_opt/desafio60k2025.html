@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Outrigger Optimizer">
+<meta name="dcterms.date" content="2026-01-14">
+
+<title>Desafio 60K 2025 - Otimização de Rotação</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="desafio60k2025_files/libs/clipboard/clipboard.min.js"></script>
+<script src="desafio60k2025_files/libs/quarto-html/quarto.js"></script>
+<script src="desafio60k2025_files/libs/quarto-html/popper.min.js"></script>
+<script src="desafio60k2025_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="desafio60k2025_files/libs/quarto-html/anchor.min.js"></script>
+<link href="desafio60k2025_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="desafio60k2025_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="desafio60k2025_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="desafio60k2025_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="desafio60k2025_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="desafio60k2025_files/libs/quarto-diagram/mermaid.min.js"></script>
+<script src="desafio60k2025_files/libs/quarto-diagram/mermaid-init.js"></script>
+<link href="desafio60k2025_files/libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introdução" id="toc-introdução" class="nav-link active" data-scroll-target="#introdução">Introdução</a></li>
+  <li><a href="#configuração-da-prova" id="toc-configuração-da-prova" class="nav-link" data-scroll-target="#configuração-da-prova">Configuração da Prova</a>
+  <ul class="collapse">
+  <li><a href="#tripulação" id="toc-tripulação" class="nav-link" data-scroll-target="#tripulação">Tripulação</a></li>
+  <li><a href="#matriz-de-elegibilidade" id="toc-matriz-de-elegibilidade" class="nav-link" data-scroll-target="#matriz-de-elegibilidade">Matriz de Elegibilidade</a></li>
+  </ul></li>
+  <li><a href="#justificativa-dos-parâmetros" id="toc-justificativa-dos-parâmetros" class="nav-link" data-scroll-target="#justificativa-dos-parâmetros">Justificativa dos Parâmetros</a>
+  <ul class="collapse">
+  <li><a href="#padrão-de-entrada-nos-bancos" id="toc-padrão-de-entrada-nos-bancos" class="nav-link" data-scroll-target="#padrão-de-entrada-nos-bancos">Padrão de Entrada nos Bancos</a></li>
+  <li><a href="#pesos-de-entrada-seat_entry_weights" id="toc-pesos-de-entrada-seat_entry_weights" class="nav-link" data-scroll-target="#pesos-de-entrada-seat_entry_weights">Pesos de Entrada (<code>seat_entry_weights</code>)</a></li>
+  <li><a href="#duração-do-turno" id="toc-duração-do-turno" class="nav-link" data-scroll-target="#duração-do-turno">Duração do turno</a></li>
+  </ul></li>
+  <li><a href="#otimização" id="toc-otimização" class="nav-link" data-scroll-target="#otimização">Otimização</a>
+  <ul class="collapse">
+  <li><a href="#comparação-de-tempos" id="toc-comparação-de-tempos" class="nav-link" data-scroll-target="#comparação-de-tempos">Comparação de Tempos</a></li>
+  <li><a href="#tabela-de-resultados" id="toc-tabela-de-resultados" class="nav-link" data-scroll-target="#tabela-de-resultados">Tabela de Resultados</a></li>
+  <li><a href="#trade-off-trocas-vs.-fadiga" id="toc-trade-off-trocas-vs.-fadiga" class="nav-link" data-scroll-target="#trade-off-trocas-vs.-fadiga">Trade-off: Trocas vs.&nbsp;Fadiga</a></li>
+  </ul></li>
+  <li><a href="#resultado-ótimo" id="toc-resultado-ótimo" class="nav-link" data-scroll-target="#resultado-ótimo">Resultado Ótimo</a>
+  <ul class="collapse">
+  <li><a href="#regras-de-rotação" id="toc-regras-de-rotação" class="nav-link" data-scroll-target="#regras-de-rotação">Regras de Rotação</a></li>
+  <li><a href="#cronograma-completo" id="toc-cronograma-completo" class="nav-link" data-scroll-target="#cronograma-completo">Cronograma Completo</a></li>
+  <li><a href="#visualização-do-cronograma" id="toc-visualização-do-cronograma" class="nav-link" data-scroll-target="#visualização-do-cronograma">Visualização do Cronograma</a></li>
+  </ul></li>
+  <li><a href="#resumo" id="toc-resumo" class="nav-link" data-scroll-target="#resumo">Resumo</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Desafio 60K 2025 - Otimização de Rotação</h1>
+<p class="subtitle lead">Análise de revezamento para canoa havaiana OC6</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Outrigger Optimizer </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">January 14, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introdução" class="level2">
+<h2 class="anchored" data-anchor-id="introdução">Introdução</h2>
+<p>Este documento apresenta a análise de otimização de rotação para o <strong>Desafio 60K 2025</strong>. O objetivo é encontrar a duração ideal de cada turno (período de remada) que minimize o tempo total de prova, considerando:</p>
+<ul>
+<li><strong>Fadiga</strong>: remadores perdem eficiência ao longo de turnos consecutivos</li>
+<li><strong>Trocas</strong>: cada troca de tripulação adiciona tempo à prova</li>
+<li><strong>Elegibilidade</strong>: cada remador só pode ocupar determinados bancos</li>
+</ul>
+</section>
+<section id="configuração-da-prova" class="level2">
+<h2 class="anchored" data-anchor-id="configuração-da-prova">Configuração da Prova</h2>
+<div id="55925d2a" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> outrigger_opt <span class="im">import</span> optimize_stint_range, solve_rotation_cycle</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuração da prova</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>DISTANCIA_KM <span class="op">=</span> <span class="dv">60</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>VELOCIDADE_KMH <span class="op">=</span> <span class="fl">9.8</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>TEMPO_TROCA_MIN <span class="op">=</span> <span class="dv">0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="tripulação" class="level3">
+<h3 class="anchored" data-anchor-id="tripulação">Tripulação</h3>
+<p>A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.</p>
+<div id="e4068928" class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>paddlers <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">'name'</span>: [<span class="st">'Eduardo'</span>, <span class="st">'Vitor'</span>, <span class="st">'Guilherme'</span>, <span class="st">'Ricardo'</span>, <span class="st">'Airton'</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>             <span class="st">'Everson'</span>, <span class="st">'Sergio'</span>, <span class="st">'Marcelo'</span>, <span class="st">'Zé'</span>]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Habilidade relativa de cada remador (1.0 = média)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>habilidade <span class="op">=</span> [<span class="fl">1.01</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">1.03</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">1.02</span>]</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Tripulação e habilidades:"</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> nome, hab <span class="kw">in</span> <span class="bu">zip</span>(paddlers[<span class="st">'name'</span>], habilidade):</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">#emoji = "💪" if hab &gt; 1.0 else ("😴" if hab &lt; 1.0 else "")</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>nome<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>hab<span class="sc">:.0%}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Tripulação e habilidades:
+  Eduardo: 101%
+  Vitor: 100%
+  Guilherme: 100%
+  Ricardo: 100%
+  Airton: 100%
+  Everson: 103%
+  Sergio: 100%
+  Marcelo: 100%
+  Zé: 102%</code></pre>
+</div>
+</div>
+</section>
+<section id="matriz-de-elegibilidade" class="level3">
+<h3 class="anchored" data-anchor-id="matriz-de-elegibilidade">Matriz de Elegibilidade</h3>
+<p>Cada remador só pode ocupar determinados bancos, baseado em sua experiência e posição preferida.</p>
+<div class="cell" data-execution_count="3">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>eligibility <span class="op">=</span> np.array([</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Eduardo: Voga/contra-voga</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Vitor: Voga/contra-voga</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Guilherme: Voga/contra-voga</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Ricardo: hip</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Airton: hip + 4</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Everson: 4</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>],  <span class="co"># Sergio: 5</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Marcelo: 5 + leme</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Zé: 5 + leme</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Criar DataFrame para visualização</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>df_elig <span class="op">=</span> pd.DataFrame(</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    eligibility,</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span>paddlers[<span class="st">'name'</span>],</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    columns<span class="op">=</span>[<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>]</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>df_elig.replace({<span class="dv">1</span>: <span class="st">'✓'</span>, <span class="dv">0</span>: <span class="st">''</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-elegibilidade" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="3">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-elegibilidade-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
+</figcaption>
+<div aria-describedby="tbl-elegibilidade-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="15">
+<div>
+
+
+<table class="dataframe do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Banco 1\n(Voga)</th>
+<th data-quarto-table-cell-role="th">Banco 2</th>
+<th data-quarto-table-cell-role="th">Banco 3</th>
+<th data-quarto-table-cell-role="th">Banco 4</th>
+<th data-quarto-table-cell-role="th">Banco 5</th>
+<th data-quarto-table-cell-role="th">Banco 6\n(Leme)</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">name</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Eduardo</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Vitor</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Guilherme</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Ricardo</td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Airton</td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Everson</td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Sergio</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Marcelo</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Zé</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div id="271d23b3" class="cell" data-execution_count="4">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(eligibility, cmap<span class="op">=</span><span class="st">'Blues'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Proa)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>])</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="dv">9</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels(paddlers[<span class="st">'name'</span>])</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar texto nas células</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">9</span>):</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> <span class="st">'✓'</span> <span class="cf">if</span> eligibility[i, j] <span class="op">==</span> <span class="dv">1</span> <span class="cf">else</span> <span class="st">''</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        ax.text(j, i, text, ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">14</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Matriz de Elegibilidade'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="desafio60k2025_files/figure-html/cell-5-output-1.png" class="img-fluid figure-img"></p>
+<figcaption>Mapa de elegibilidade dos remadores</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="justificativa-dos-parâmetros" class="level2">
+<h2 class="anchored" data-anchor-id="justificativa-dos-parâmetros">Justificativa dos Parâmetros</h2>
+<section id="padrão-de-entrada-nos-bancos" class="level3">
+<h3 class="anchored" data-anchor-id="padrão-de-entrada-nos-bancos">Padrão de Entrada nos Bancos</h3>
+<p>A rotação tradicional (equipes experientes) segue o padrão:</p>
+<ul>
+<li><strong>Voga</strong>: Remador descansado entra no <strong>banco 1 (voga)</strong> e passa pro 2 na troca seguinte — assim o voga está sempre “fresco” (lá ele)</li>
+</ul>
+<p>Para a equipe <strong>Caveiras</strong>, invertemos esse padrão:</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Adaptação para Caveiras
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Proa</strong>: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.</p>
+<p><em>Justificativa</em>: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de primeira. Melhor entrar no 2, esquentar e ir pro 1.</p>
+<p><strong>Popa</strong>: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.</p>
+</div>
+</div>
+</section>
+<section id="pesos-de-entrada-seat_entry_weights" class="level3">
+<h3 class="anchored" data-anchor-id="pesos-de-entrada-seat_entry_weights">Pesos de Entrada (<code>seat_entry_weights</code>)</h3>
+<p>Os pesos refletem a dificuldade/preferência de entrada em cada banco:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Banco</th>
+<th>Peso</th>
+<th>Justificativa</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1 (Voga)</td>
+<td>1.0</td>
+<td>Fácil de subir, mas prefere-se entrar aquecido</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>2.0</td>
+<td>Banco preferido para entrada — esquenta antes de ir pro 1</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>1.2</td>
+<td>Ricardo é o nosso Hip principal</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>1.2</td>
+<td>Meio — sem grande diferença</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>1.2</td>
+<td>Entrada padrão da popa</td>
+</tr>
+<tr class="even">
+<td>6 (Leme)</td>
+<td>1.0</td>
+<td>Alguns têm dificuldade de subir</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="duração-do-turno" class="level3">
+<h3 class="anchored" data-anchor-id="duração-do-turno">Duração do turno</h3>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Por que turnos curtos?
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Achava que poderia ser tipo 30 min remando, 15 min descansando. Mas tem que ser <strong>curto mesmo</strong> — 10 a 13 minutos. Se não cansa de mais. Com mais trocas, a troca é “traumática” para alguns de nós.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="otimização" class="level2">
+<h2 class="anchored" data-anchor-id="otimização">Otimização</h2>
+<p>Testamos durações de turno entre <strong>10 e 20 minutos</strong> para encontrar o tempo ótimo.</p>
+<div id="f4d0b429" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> optimize_stint_range(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    paddlers,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">10</span>, <span class="dv">20</span>),</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    seat_eligibility<span class="op">=</span>eligibility,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    seat_weights<span class="op">=</span>[<span class="fl">1.05</span>, <span class="fl">1.02</span>, <span class="fl">1.02</span>, <span class="fl">1.01</span>, <span class="fl">1.00</span>, <span class="fl">1.10</span>],</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>[<span class="dv">1</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="dv">1</span>],</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    paddler_ability<span class="op">=</span>habilidade,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    distance_km<span class="op">=</span>DISTANCIA_KM,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    speed_kmh<span class="op">=</span>VELOCIDADE_KMH,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    switch_time_min<span class="op">=</span>TEMPO_TROCA_MIN,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    max_consecutive<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    solver_time_secs<span class="op">=</span><span class="dv">60</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    gap_tolerance<span class="op">=</span><span class="fl">0.001</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="comparação-de-tempos" class="level3">
+<h3 class="anchored" data-anchor-id="comparação-de-tempos">Comparação de Tempos</h3>
+<div id="cell-fig-comparacao" class="cell" data-execution_count="6">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> results[<span class="st">'summary'</span>]</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Gráfico principal</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>ax.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'race_time'</span>], <span class="st">'b-o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, markersize<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Destacar o melhor</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>best_idx <span class="op">=</span> summary[<span class="st">'race_time'</span>].idxmin()</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>best_stint <span class="op">=</span> <span class="bu">int</span>(summary.loc[best_idx, <span class="st">'stint_min'</span>])</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>best_time <span class="op">=</span> summary.loc[best_idx, <span class="st">'race_time'</span>]</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>ax.scatter([best_stint], [best_time], color<span class="op">=</span><span class="st">'red'</span>, s<span class="op">=</span><span class="dv">200</span>, zorder<span class="op">=</span><span class="dv">5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint<span class="sc">}</span><span class="ss"> min'</span>)</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>ax.axhline(y<span class="op">=</span>best_time, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>ax.axvline(x<span class="op">=</span>best_stint, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'Duração do turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">'Tempo Total de Prova (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Otimização da Duração do turno'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ax.grid(<span class="va">True</span>, alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar anotação</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>ax.annotate(<span class="ss">f'</span><span class="sc">{</span>best_time<span class="sc">:.1f}</span><span class="ss"> min</span><span class="ch">\n</span><span class="ss">(</span><span class="sc">{</span>best_time<span class="op">/</span><span class="dv">60</span><span class="sc">:.1f}</span><span class="ss"> horas)'</span>,</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>            xy<span class="op">=</span>(best_stint, best_time),</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>            xytext<span class="op">=</span>(best_stint <span class="op">+</span> <span class="dv">2</span>, best_time <span class="op">+</span> <span class="dv">3</span>),</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>            fontsize<span class="op">=</span><span class="dv">11</span>,</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>            arrowprops<span class="op">=</span><span class="bu">dict</span>(arrowstyle<span class="op">=</span><span class="st">'-&gt;'</span>, color<span class="op">=</span><span class="st">'red'</span>))</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-comparacao" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-comparacao-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="desafio60k2025_files/figure-html/fig-comparacao-output-1.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-comparacao-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Tempo de prova vs.&nbsp;duração do turno
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="tabela-de-resultados" class="level3">
+<h3 class="anchored" data-anchor-id="tabela-de-resultados">Tabela de Resultados</h3>
+<div class="cell" data-execution_count="7">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary.copy()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'race_time_hours'</span>] <span class="op">=</span> summary_display[<span class="st">'race_time'</span>] <span class="op">/</span> <span class="dv">60</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>summary_display.columns <span class="op">=</span> [<span class="st">'turno (min)'</span>, <span class="st">'Nº turnos'</span>, <span class="st">'Output Médio'</span>, <span class="st">'Tempo (min)'</span>, <span class="st">'Tempo (horas)'</span>]</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Output Médio'</span>] <span class="op">=</span> summary_display[<span class="st">'Output Médio'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1%}</span><span class="ss">'</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (min)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1f}</span><span class="ss">'</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (horas)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (horas)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>summary_display</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-resultados" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="7">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Comparação de tempos por duração de turno
+</figcaption>
+<div aria-describedby="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="19">
+<div>
+
+
+<table class="dataframe do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">turno (min)</th>
+<th data-quarto-table-cell-role="th">Nº turnos</th>
+<th data-quarto-table-cell-role="th">Output Médio</th>
+<th data-quarto-table-cell-role="th">Tempo (min)</th>
+<th data-quarto-table-cell-role="th">Tempo (horas)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>10</td>
+<td>37</td>
+<td>96.6%</td>
+<td>380.3</td>
+<td>6.34</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>11</td>
+<td>34</td>
+<td>96.9%</td>
+<td>379.2</td>
+<td>6.32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>12</td>
+<td>31</td>
+<td>96.9%</td>
+<td>378.9</td>
+<td>6.32</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>13</td>
+<td>29</td>
+<td>96.9%</td>
+<td>379.2</td>
+<td>6.32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>14</td>
+<td>27</td>
+<td>96.7%</td>
+<td>380.0</td>
+<td>6.33</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>15</td>
+<td>25</td>
+<td>96.4%</td>
+<td>381.1</td>
+<td>6.35</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>16</td>
+<td>23</td>
+<td>96.0%</td>
+<td>382.5</td>
+<td>6.38</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>17</td>
+<td>22</td>
+<td>95.6%</td>
+<td>384.1</td>
+<td>6.40</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>18</td>
+<td>21</td>
+<td>95.2%</td>
+<td>386.1</td>
+<td>6.43</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>19</td>
+<td>20</td>
+<td>94.7%</td>
+<td>388.0</td>
+<td>6.47</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="trade-off-trocas-vs.-fadiga" class="level3">
+<h3 class="anchored" data-anchor-id="trade-off-trocas-vs.-fadiga">Trade-off: Trocas vs.&nbsp;Fadiga</h3>
+<div id="cell-fig-tradeoff" class="cell" data-execution_count="8">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fig, ax1 <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>color1 <span class="op">=</span> <span class="st">'tab:blue'</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>ax1.set_xlabel(<span class="st">'Duração do turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>ax1.set_ylabel(<span class="st">'Número de Trocas'</span>, color<span class="op">=</span>color1, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>ax1.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'n_stints'</span>] <span class="op">-</span> <span class="dv">1</span>, color<span class="op">=</span>color1, marker<span class="op">=</span><span class="st">'s'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Trocas'</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>ax1.tick_params(axis<span class="op">=</span><span class="st">'y'</span>, labelcolor<span class="op">=</span>color1)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>ax2 <span class="op">=</span> ax1.twinx()</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>color2 <span class="op">=</span> <span class="st">'tab:orange'</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>ax2.set_ylabel(<span class="st">'Output Médio (%)'</span>, color<span class="op">=</span>color2, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>ax2.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'avg_output'</span>] <span class="op">*</span> <span class="dv">100</span>, color<span class="op">=</span>color2, marker<span class="op">=</span><span class="st">'o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Output'</span>)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>ax2.tick_params(axis<span class="op">=</span><span class="st">'y'</span>, labelcolor<span class="op">=</span>color2)</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Linha vertical no ótimo</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>ax1.axvline(x<span class="op">=</span>best_stint, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint<span class="sc">}</span><span class="ss"> min'</span>)</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">'Trade-off: Menos Trocas vs. Mais Fadiga'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>fig.legend(loc<span class="op">=</span><span class="st">'upper center'</span>, bbox_to_anchor<span class="op">=</span>(<span class="fl">0.5</span>, <span class="fl">0.02</span>), ncol<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>plt.subplots_adjust(bottom<span class="op">=</span><span class="fl">0.15</span>)</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-tradeoff" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-tradeoff-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="desafio60k2025_files/figure-html/fig-tradeoff-output-1.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tradeoff-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Análise do trade-off entre número de trocas e output médio
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="resultado-ótimo" class="level2">
+<h2 class="anchored" data-anchor-id="resultado-ótimo">Resultado Ótimo</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Configuração Recomendada
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Duração do turno: 12 minutos</strong></p>
+<p>Tempo estimado de prova: <strong>378.9 minutos</strong> (6.3 horas)</p>
+</div>
+</div>
+<section id="regras-de-rotação" class="level3">
+<h3 class="anchored" data-anchor-id="regras-de-rotação">Regras de Rotação</h3>
+<p>Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:</p>
+<div id="ef5a8938" class="cell" data-execution_count="9">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Ciclo de Rotação (repete a cada 3 turnos):</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, rule <span class="kw">in</span> results[<span class="st">'best'</span>][<span class="st">'cycle_rules'</span>].items():</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>name<span class="sc">:12}</span><span class="ss"> </span><span class="sc">{</span>rule<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Ciclo de Rotação (repete a cada 3 turnos):
+
+  Eduardo      Seat 2* → Seat 1 → Rest
+  Vitor        Seat 2 → Seat 1 → Rest*
+  Guilherme    Seat 2 → Seat 1* → Rest
+  Ricardo      Seat 3 → Seat 3* → Rest
+  Airton       Seat 4* → Seat 3 → Rest
+  Everson      Seat 4 → Seat 4 → Rest*
+  Sergio       Seat 5 → Seat 5* → Rest
+  Marcelo      Seat 5 → Seat 6 → Rest*
+  Zé           Seat 6* → Seat 6 → Rest</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TB
+    subgraph Stint1["turno 1"]
+        S1B1[Eduardo] --&gt; S1B2[Vitor]
+        S1B2 --&gt; S1B3[Airton]
+        S1B3 --&gt; S1B4[Sergio]
+        S1B4 --&gt; S1B5[Everson]
+        S1B5 --&gt; S1B6[Marcelo]
+    end
+
+    subgraph Stint2["turno 2"]
+        S2B1[Vitor] --&gt; S2B2[Guilherme]
+        S2B2 --&gt; S2B3[Ricardo]
+        S2B3 --&gt; S2B4[Airton]
+        S2B4 --&gt; S2B5[Sergio]
+        S2B5 --&gt; S2B6[Zé]
+    end
+
+    subgraph Stint3["turno 3"]
+        S3B1[Guilherme] --&gt; S3B2[Eduardo]
+        S3B2 --&gt; S3B3[Ricardo]
+        S3B3 --&gt; S3B4[Everson]
+        S3B4 --&gt; S3B5[Marcelo]
+        S3B5 --&gt; S3B6[Zé]
+    end
+
+    turno1 --&gt; turno2 --&gt; turno3 --&gt; turno1
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="cronograma-completo" class="level3">
+<h3 class="anchored" data-anchor-id="cronograma-completo">Cronograma Completo</h3>
+<div class="cell" data-execution_count="10">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>schedule <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'schedule'</span>].copy()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>schedule.columns <span class="op">=</span> schedule.columns.<span class="bu">str</span>.strip()</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>schedule.index.name <span class="op">=</span> <span class="st">'Stint'</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename seats</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>schedule.columns <span class="op">=</span> [<span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Add durations (minutes per stint)</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo (min)'</span>] <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'stint_min'</span>]</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Add pretty hh:mm</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo'</span>] <span class="op">=</span> schedule[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="op">//</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss">h</span><span class="sc">{</span>x<span class="op">%</span><span class="dv">60</span><span class="sc">:02.0f}</span><span class="ss">'</span>)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>schedule[[<span class="st">'Tempo'</span>, <span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]]</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar coluna de tempo</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo'</span>] <span class="op">=</span> schedule[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="op">//</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss">h</span><span class="sc">{</span>x<span class="op">%</span><span class="dv">60</span><span class="sc">:02.0f}</span><span class="ss">'</span>)</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>schedule[[<span class="st">'Tempo'</span>, <span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-schedule" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="10">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-schedule-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: Cronograma completo da prova
+</figcaption>
+<div aria-describedby="tbl-schedule-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="22">
+<div>
+
+
+<table class="dataframe do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Tempo</th>
+<th data-quarto-table-cell-role="th">Banco 1</th>
+<th data-quarto-table-cell-role="th">Banco 2</th>
+<th data-quarto-table-cell-role="th">Banco 3</th>
+<th data-quarto-table-cell-role="th">Banco 4</th>
+<th data-quarto-table-cell-role="th">Banco 5</th>
+<th data-quarto-table-cell-role="th">Banco 6</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Stint</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">11</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">12</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">14</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">15</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">16</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">17</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">18</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">19</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">20</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">21</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">22</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">23</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">24</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">25</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">26</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">27</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">28</td>
+<td>0h12</td>
+<td>Eduardo</td>
+<td>Vitor</td>
+<td>Airton</td>
+<td>Everson</td>
+<td>Marcelo</td>
+<td>Zé</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">29</td>
+<td>0h12</td>
+<td>Vitor</td>
+<td>Guilherme</td>
+<td>Ricardo</td>
+<td>Everson</td>
+<td>Sergio</td>
+<td>Marcelo</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">30</td>
+<td>0h12</td>
+<td>Guilherme</td>
+<td>Eduardo</td>
+<td>Ricardo</td>
+<td>Airton</td>
+<td>Sergio</td>
+<td>Zé</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="visualização-do-cronograma" class="level3">
+<h3 class="anchored" data-anchor-id="visualização-do-cronograma">Visualização do Cronograma</h3>
+<div id="cell-fig-heatmap" class="cell" data-execution_count="11">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>schedule_matrix <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'schedule'</span>].copy()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>paddler_to_num <span class="op">=</span> {name: i <span class="cf">for</span> i, name <span class="kw">in</span> <span class="bu">enumerate</span>(paddlers[<span class="st">'name'</span>])}</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>schedule_numeric <span class="op">=</span> schedule_matrix.replace(paddler_to_num)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">10</span>))</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(schedule_numeric.values, cmap<span class="op">=</span><span class="st">'tab10'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Proa)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>])</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix)))</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels([<span class="ss">f'Stint </span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">'</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix))])</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar nomes nas células</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix)):</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        name <span class="op">=</span> schedule_matrix.iloc[i, j]</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        ax.text(j, i, name[:<span class="dv">3</span>], ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">8</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, color<span class="op">=</span><span class="st">'white'</span>)</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Cronograma de Rotação - Desafio 60K 2025'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-heatmap" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-heatmap-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="desafio60k2025_files/figure-html/fig-heatmap-output-1.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heatmap-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Mapa de calor do cronograma de rotação
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="resumo" class="level2">
+<h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
+<div id="6d7964c7" class="cell" data-execution_count="12">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>n_trocas <span class="op">=</span> n_stints <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>tempo_remando <span class="op">=</span> n_stints <span class="op">*</span> best_stint <span class="op">*</span> (<span class="dv">2</span><span class="op">/</span><span class="dv">3</span>)  <span class="co"># cada remador rema 2 de cada 3 stints</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Métrica</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Distância</td>
+<td>60 km</td>
+</tr>
+<tr class="even">
+<td>Velocidade base</td>
+<td>9.8 km/h</td>
+</tr>
+<tr class="odd">
+<td>Duração do stint</td>
+<td>12 min</td>
+</tr>
+<tr class="even">
+<td>Número de stints</td>
+<td>31</td>
+</tr>
+<tr class="odd">
+<td>Número de trocas</td>
+<td>30</td>
+</tr>
+<tr class="even">
+<td>Tempo por troca</td>
+<td>0 min</td>
+</tr>
+<tr class="odd">
+<td><strong>Tempo total</strong></td>
+<td><strong>378.9 min</strong> (6.3 h)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Gerado com <a href="https://github.com/anthropics/outrigger">Outrigger Optimizer</a></em></p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
