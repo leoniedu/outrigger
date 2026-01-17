@@ -12,6 +12,8 @@ def optimize_stint_range(paddlers,
                          seat_weights=None,
                          seat_entry_weights=None,
                          paddler_ability=None,
+                         paddler_weight=None,
+                         trim_penalty_weight=0.0,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
@@ -29,6 +31,8 @@ def optimize_stint_range(paddlers,
         seat_weights: Optional list of seat importance weights
         seat_entry_weights: Optional list of entry ease weights per seat
         paddler_ability: Optional list of ability multipliers per paddler
+        paddler_weight: Optional list of weights per paddler (kg or relative)
+        trim_penalty_weight: Penalty weight for trim imbalance (default 0.0 = disabled)
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
         solver_time_secs: Maximum solver computation time in seconds per stint duration
@@ -51,6 +55,8 @@ def optimize_stint_range(paddlers,
             seat_weights=seat_weights,
             seat_entry_weights=seat_entry_weights,
             paddler_ability=paddler_ability,
+            paddler_weight=paddler_weight,
+            trim_penalty_weight=trim_penalty_weight,
             n_seats=n_seats,
             n_resting=n_resting,
             solver_time_secs=solver_time_secs,
@@ -64,6 +70,7 @@ def optimize_stint_range(paddlers,
             "schedule": res["schedule"],
             "cycle_schedule": res["cycle_schedule"],
             "cycle_rules": res["cycle_rules"],
+            "parameters": res["parameters"],
         })
     summary = pd.DataFrame([
         {k: r[k] for k in ["stint_min", "n_stints", "avg_output", "race_time"]}

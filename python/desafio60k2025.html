@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Outrigger Optimizer">
-<meta name="dcterms.date" content="2026-01-15">
+<meta name="dcterms.date" content="2026-01-17">
 
 <title>Desafio 60K 2025 - Otimização de Rotação</title>
 <style>
@@ -105,9 +105,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#resultado-ótimo" id="toc-resultado-ótimo" class="nav-link" data-scroll-target="#resultado-ótimo">Resultado Ótimo</a>
   <ul class="collapse">
   <li><a href="#regras-de-rotação" id="toc-regras-de-rotação" class="nav-link" data-scroll-target="#regras-de-rotação">Regras de Rotação</a></li>
-  <li><a href="#cronograma-completo" id="toc-cronograma-completo" class="nav-link" data-scroll-target="#cronograma-completo">Cronograma Completo</a></li>
-  <li><a href="#visualização-do-cronograma" id="toc-visualização-do-cronograma" class="nav-link" data-scroll-target="#visualização-do-cronograma">Visualização do Cronograma</a></li>
+  <li><a href="#ciclo-de-rotação" id="toc-ciclo-de-rotação" class="nav-link" data-scroll-target="#ciclo-de-rotação">Ciclo de Rotação</a></li>
   </ul></li>
+  <li><a href="#análise-de-trim-balanço" id="toc-análise-de-trim-balanço" class="nav-link" data-scroll-target="#análise-de-trim-balanço">Análise de Trim (Balanço)</a></li>
   <li><a href="#resumo" id="toc-resumo" class="nav-link" data-scroll-target="#resumo">Resumo</a></li>
   </ul>
 </nav>
@@ -134,7 +134,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 15, 2026</p>
+      <p class="date">January 17, 2026</p>
     </div>
   </div>
   
@@ -157,7 +157,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="configuração-da-prova" class="level2">
 <h2 class="anchored" data-anchor-id="configuração-da-prova">Configuração da Prova</h2>
-<div id="8689798d" class="cell" data-execution_count="1">
+<div id="5cdab98f" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
@@ -167,40 +167,107 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuração da prova</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>DISTANCIA_KM <span class="op">=</span> <span class="dv">60</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>VELOCIDADE_KMH <span class="op">=</span> <span class="fl">9.8</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>TEMPO_TROCA_MIN <span class="op">=</span> <span class="fl">.5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>VELOCIDADE_KMH <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>TEMPO_TROCA_SECS <span class="op">=</span> <span class="dv">40</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <section id="tripulação" class="level3">
 <h3 class="anchored" data-anchor-id="tripulação">Tripulação</h3>
 <p>A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.</p>
-<div id="23c9c2d9" class="cell" data-execution_count="2">
+<div id="381ad82f" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>paddlers <span class="op">=</span> pd.DataFrame({</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">'name'</span>: [<span class="st">'Eduardo'</span>, <span class="st">'Vitor'</span>, <span class="st">'Guilherme'</span>, <span class="st">'Ricardo'</span>, <span class="st">'Airton'</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">'name'</span>: [<span class="st">'Eduardo'</span>, <span class="st">'Guilherme'</span>, <span class="st">'Vitor'</span>, <span class="st">'Ricardo'</span>, <span class="st">'Airton'</span>,</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>             <span class="st">'Everson'</span>, <span class="st">'Sergio'</span>, <span class="st">'Marcelo'</span>, <span class="st">'Zé'</span>]</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>})</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Habilidade relativa de cada remador (1.0 = média)</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>habilidade <span class="op">=</span> [<span class="fl">1.01</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">1.03</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">1.02</span>]</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>habilidade <span class="op">=</span> [<span class="fl">1.02</span>, <span class="fl">1.0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">1.02</span>, <span class="fl">.98</span>, <span class="fl">1.01</span>, <span class="fl">1.02</span>]</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Tripulação e habilidades:"</span>)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> nome, hab <span class="kw">in</span> <span class="bu">zip</span>(paddlers[<span class="st">'name'</span>], habilidade):</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">#emoji = "💪" if hab &gt; 1.0 else ("😴" if hab &lt; 1.0 else "")</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>nome<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>hab<span class="sc">:.0%}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Peso de cada remador (kg) - usado para cálculo de trim (balanco)</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>peso <span class="op">=</span> [<span class="dv">73</span>, <span class="dv">89</span>, <span class="dv">78</span>, <span class="dv">95</span>, <span class="dv">95</span>, <span class="dv">75</span>, <span class="dv">75</span>, <span class="dv">97</span>, <span class="dv">78</span>]</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Tabela da tripulação</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>tripulacao <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Nome'</span>: paddlers[<span class="st">'name'</span>],</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Habilidade'</span>: [<span class="ss">f'</span><span class="sc">{</span>h<span class="sc">:.0%}</span><span class="ss">'</span> <span class="cf">for</span> h <span class="kw">in</span> habilidade],</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Peso (kg)'</span>: peso</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>tripulacao</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-stdout">
-<pre><code>Tripulação e habilidades:
-  Eduardo: 101%
-  Vitor: 100%
-  Guilherme: 100%
-  Ricardo: 100%
-  Airton: 100%
-  Everson: 103%
-  Sergio: 100%
-  Marcelo: 100%
-  Zé: 102%</code></pre>
+<div class="cell-output cell-output-display" data-execution_count="2">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Nome</th>
+<th data-quarto-table-cell-role="th">Habilidade</th>
+<th data-quarto-table-cell-role="th">Peso (kg)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Eduardo</td>
+<td>102%</td>
+<td>73</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Guilherme</td>
+<td>100%</td>
+<td>89</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Vitor</td>
+<td>100%</td>
+<td>78</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Ricardo</td>
+<td>100%</td>
+<td>95</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Airton</td>
+<td>100%</td>
+<td>95</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Everson</td>
+<td>102%</td>
+<td>75</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>Sergio</td>
+<td>98%</td>
+<td>75</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>Marcelo</td>
+<td>101%</td>
+<td>97</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>Zé</td>
+<td>102%</td>
+<td>78</td>
+</tr>
+</tbody>
+</table>
+
+</div>
 </div>
 </div>
 </section>
@@ -210,25 +277,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell" data-execution_count="3">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>eligibility <span class="op">=</span> np.array([</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Eduardo: Voga/contra-voga</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Vitor: Voga/contra-voga</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Guilherme: Voga/contra-voga</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Ricardo: hip</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">5</span>, <span class="dv">0</span>],  <span class="co"># Airton: 5</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Everson: hip+4</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Sergio: hip+4</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Marcelo: 5 + leme</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Zé: 5 + leme</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>])</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Criar DataFrame para visualização</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>df_elig <span class="op">=</span> pd.DataFrame(</span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    eligibility,</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span>paddlers[<span class="st">'name'</span>],</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    columns<span class="op">=</span>[<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>]</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>df_elig.replace({<span class="dv">1</span>: <span class="st">'✓'</span>, <span class="dv">0</span>: <span class="st">''</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>eligibility <span class="op">=</span> np.array([</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Eduardo</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>],  <span class="co"># Guilherme</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Vitor</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>],  <span class="co"># Ricardo</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>],  <span class="co"># Airton</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Everson</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>],  <span class="co"># Sergio</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Marcelo</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>],  <span class="co"># Zé</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Criar DataFrame para visualização</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>df_elig <span class="op">=</span> pd.DataFrame(</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    eligibility,</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span>paddlers[<span class="st">'name'</span>],</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    columns<span class="op">=</span>[<span class="st">'Banco 1 (Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6 (Leme)'</span>]</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>df_elig.replace({<span class="dv">1</span>: <span class="st">'✓'</span>, <span class="dv">0</span>: <span class="st">''</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div id="tbl-elegibilidade" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="3">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -244,12 +311,12 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th">Banco 1\n(Voga)</th>
+<th data-quarto-table-cell-role="th">Banco 1 (Voga)</th>
 <th data-quarto-table-cell-role="th">Banco 2</th>
 <th data-quarto-table-cell-role="th">Banco 3</th>
 <th data-quarto-table-cell-role="th">Banco 4</th>
 <th data-quarto-table-cell-role="th">Banco 5</th>
-<th data-quarto-table-cell-role="th">Banco 6\n(Leme)</th>
+<th data-quarto-table-cell-role="th">Banco 6 (Leme)</th>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">name</th>
@@ -272,15 +339,6 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <td></td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">Vitor</td>
-<td>✓</td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="odd">
 <td data-quarto-table-cell-role="th">Guilherme</td>
 <td>✓</td>
 <td>✓</td>
@@ -289,40 +347,49 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <td></td>
 <td></td>
 </tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Vitor</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">Ricardo</td>
 <td></td>
 <td></td>
 <td>✓</td>
-<td></td>
-<td></td>
+<td>✓</td>
+<td>✓</td>
 <td></td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">Airton</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
-<td>5</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
 <td></td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">Everson</td>
-<td></td>
-<td></td>
 <td>✓</td>
 <td>✓</td>
-<td></td>
-<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">Sergio</td>
 <td></td>
 <td></td>
-<td>✓</td>
-<td>✓</td>
 <td></td>
+<td>✓</td>
+<td>✓</td>
 <td></td>
 </tr>
 <tr class="even">
@@ -330,7 +397,7 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 <td></td>
 <td></td>
 <td></td>
-<td></td>
+<td>✓</td>
 <td>✓</td>
 <td>✓</td>
 </tr>
@@ -352,26 +419,41 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 </figure>
 </div>
 </div>
-<div id="7dc6aff1" class="cell" data-execution_count="4">
+<div id="65468e18" class="cell" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(eligibility, cmap<span class="op">=</span><span class="st">'Blues'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1 (Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6 (Leme)'</span>])</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="dv">9</span>))</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels(paddlers[<span class="st">'name'</span>])</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar texto nas células</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">9</span>):</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> <span class="st">'✓'</span> <span class="cf">if</span> eligibility[i, j] <span class="op">==</span> <span class="dv">1</span> <span class="cf">else</span> <span class="st">''</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        ax.text(j, i, text, ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">14</span>)</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Matriz de Elegibilidade'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate average and std of eligible seat positions for each paddler</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>seat_positions <span class="op">=</span> np.arange(<span class="dv">1</span>, <span class="dv">7</span>)  <span class="co"># 1-6</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>paddler_stats <span class="op">=</span> []</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, name <span class="kw">in</span> <span class="bu">enumerate</span>(paddlers[<span class="st">'name'</span>]):</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    eligible_seats <span class="op">=</span> seat_positions[eligibility[i] <span class="op">==</span> <span class="dv">1</span>]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    avg_seat <span class="op">=</span> eligible_seats.mean()</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    std_seat <span class="op">=</span> eligible_seats.std() <span class="cf">if</span> <span class="bu">len</span>(eligible_seats) <span class="op">&gt;</span> <span class="dv">1</span> <span class="cf">else</span> <span class="dv">0</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    paddler_stats.append((i, name, avg_seat, std_seat))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Sort by average (increasing), then by std (decreasing)</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>paddler_stats.sort(key<span class="op">=</span><span class="kw">lambda</span> x: (x[<span class="dv">2</span>], <span class="op">-</span>x[<span class="dv">3</span>]))</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>sorted_indices <span class="op">=</span> [s[<span class="dv">0</span>] <span class="cf">for</span> s <span class="kw">in</span> paddler_stats]</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>sorted_names <span class="op">=</span> [s[<span class="dv">1</span>] <span class="cf">for</span> s <span class="kw">in</span> paddler_stats]</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>sorted_eligibility <span class="op">=</span> eligibility[sorted_indices]</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(sorted_eligibility, cmap<span class="op">=</span><span class="st">'Blues'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1 (Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6 (Leme)'</span>])</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="dv">9</span>))</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels(sorted_names)</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar texto nas células</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">9</span>):</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> <span class="st">'✓'</span> <span class="cf">if</span> sorted_eligibility[i, j] <span class="op">==</span> <span class="dv">1</span> <span class="cf">else</span> <span class="st">''</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        ax.text(j, i, text, ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">14</span>)</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Matriz de Elegibilidade'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -403,99 +485,104 @@ Adaptação para Caveiras
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>Proa</strong>: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.</p>
-<p><em>Justificativa</em>: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de primeira. Melhor entrar no 2, esquentar e ir pro 1.</p>
-<p><strong>Popa</strong>: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.</p>
+<p><strong>Voga</strong>: Entrar no banco 2 primeiro, esquentar, depois ir pro banco 1.</p>
+<p><em>Justificativa</em>: O atleta vai subir pro banco 1 provavelmente frio, dificilmente acertará o ritmo de imediato. Melhor entrar no 2, esquentar e acompanhar o voga anterior, e só depois ir pro 1.</p>
+<p><strong>Leme</strong>: Marcelo entra no banco 5, depois vai pro 5. Zé direto no 6.</p>
 </div>
 </div>
 </section>
 <section id="pesos-de-entrada-seat_entry_weights" class="level3">
 <h3 class="anchored" data-anchor-id="pesos-de-entrada-seat_entry_weights">Pesos de Entrada (<code>seat_entry_weights</code>)</h3>
-<p>Os pesos refletem a dificuldade/preferência de entrada em cada banco:</p>
-<table class="caption-top table">
+<p>Os pesos refletem a preferência de entrada em cada banco (maior = preferido para entrada):</p>
+<div id="1b2da518" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>seat_entry_weights <span class="op">=</span> [<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">1</span>]</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>seat_names <span class="op">=</span> [<span class="st">'Banco 1 (Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6 (Leme)'</span>]</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>pd.DataFrame({</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Banco'</span>: seat_names,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Peso'</span>: seat_entry_weights</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>}).set_index(<span class="st">'Banco'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="5">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
 <thead>
 <tr class="header">
-<th>Banco</th>
-<th>Peso</th>
-<th>Justificativa</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Peso</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Banco</th>
+<th data-quarto-table-cell-role="th"></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>1 (Voga)</td>
-<td>1.0</td>
-<td>Fácil de subir, mas prefere-se entrar aquecido</td>
+<td data-quarto-table-cell-role="th">Banco 1 (Voga)</td>
+<td>1</td>
 </tr>
 <tr class="even">
-<td>2</td>
-<td>2.0</td>
-<td>Banco preferido para entrada — esquenta antes de ir pro 1</td>
-</tr>
-<tr class="odd">
-<td>3</td>
-<td>1.2</td>
-<td>Ricardo é o nosso Hip principal</td>
-</tr>
-<tr class="even">
+<td data-quarto-table-cell-role="th">Banco 2</td>
 <td>4</td>
-<td>1.2</td>
-<td>Meio — sem grande diferença</td>
 </tr>
 <tr class="odd">
-<td>5</td>
-<td>1.2</td>
-<td>Entrada padrão da popa</td>
+<td data-quarto-table-cell-role="th">Banco 3</td>
+<td>4</td>
 </tr>
 <tr class="even">
-<td>6 (Leme)</td>
-<td>1.0</td>
-<td>Alguns têm dificuldade de subir</td>
+<td data-quarto-table-cell-role="th">Banco 4</td>
+<td>4</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Banco 5</td>
+<td>4</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Banco 6 (Leme)</td>
+<td>1</td>
 </tr>
 </tbody>
 </table>
+
+</div>
+</div>
+</div>
 </section>
 <section id="duração-do-turno" class="level3">
 <h3 class="anchored" data-anchor-id="duração-do-turno">Duração do turno</h3>
-<div class="callout callout-style-default callout-important callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Por que turnos curtos?
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>Achava que poderia ser tipo 30 min remando, 15 min descansando. Mas tem que ser <strong>curto mesmo</strong> — 10 a 13 minutos. Se não cansa de mais. Com mais trocas, a troca é “traumática” para alguns de nós.</p>
-</div>
-</div>
 </section>
 </section>
 <section id="otimização" class="level2">
 <h2 class="anchored" data-anchor-id="otimização">Otimização</h2>
 <p>Testamos durações de turno entre <strong>10 e 20 minutos</strong> para encontrar o tempo ótimo.</p>
-<div id="c1e3ceb4" class="cell" data-execution_count="5">
+<div id="9b71d03e" class="cell" data-execution_count="6">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> optimize_stint_range(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    paddlers,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">8</span>, <span class="dv">20</span>),</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">14</span>, <span class="dv">15</span>),</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    seat_eligibility<span class="op">=</span>eligibility,</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    seat_weights<span class="op">=</span>[<span class="fl">1.05</span>, <span class="fl">1.02</span>, <span class="fl">1.02</span>, <span class="fl">1.01</span>, <span class="fl">1.00</span>, <span class="fl">1.10</span>],</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>[<span class="dv">1</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="fl">1.2</span>, <span class="dv">2</span>, <span class="dv">1</span>],</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>seat_entry_weights,</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    paddler_ability<span class="op">=</span>habilidade,</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    distance_km<span class="op">=</span>DISTANCIA_KM,</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    speed_kmh<span class="op">=</span>VELOCIDADE_KMH,</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    switch_time_min<span class="op">=</span>TEMPO_TROCA_MIN,</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    max_consecutive<span class="op">=</span><span class="dv">3</span>,</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    solver_time_secs<span class="op">=</span><span class="dv">60</span>,</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    gap_tolerance<span class="op">=</span><span class="fl">0.001</span>,</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    paddler_weight<span class="op">=</span>peso,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    trim_penalty_weight<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    distance_km<span class="op">=</span>DISTANCIA_KM,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    speed_kmh<span class="op">=</span>VELOCIDADE_KMH,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    switch_time_secs<span class="op">=</span>TEMPO_TROCA_SECS,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    max_consecutive<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    solver_time_secs<span class="op">=</span><span class="dv">60</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    gap_tolerance<span class="op">=</span><span class="fl">0.001</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <section id="comparação-de-tempos" class="level3">
 <h3 class="anchored" data-anchor-id="comparação-de-tempos">Comparação de Tempos</h3>
-<div id="cell-fig-comparacao" class="cell" data-execution_count="6">
+<div id="cell-fig-comparacao" class="cell" data-execution_count="7">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> results[<span class="st">'summary'</span>]</span>
@@ -514,9 +601,9 @@ Por que turnos curtos?
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>ax.axhline(y<span class="op">=</span>best_time, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
 <span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>ax.axvline(x<span class="op">=</span>best_stint, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
 <span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'Duração do turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'Duração do Turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
 <span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">'Tempo Total de Prova (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Otimização da Duração do turno'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Otimização da Duração do Turno'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
 <span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
 <span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ax.grid(<span class="va">True</span>, alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
 <span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
@@ -546,24 +633,27 @@ Figure&nbsp;1: Tempo de prova vs.&nbsp;duração do turno
 </section>
 <section id="tabela-de-resultados" class="level3">
 <h3 class="anchored" data-anchor-id="tabela-de-resultados">Tabela de Resultados</h3>
-<div class="cell" data-execution_count="7">
+<div class="cell" data-execution_count="8">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary.copy()</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'race_time_hours'</span>] <span class="op">=</span> summary_display[<span class="st">'race_time'</span>] <span class="op">/</span> <span class="dv">60</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>summary_display.columns <span class="op">=</span> [<span class="st">'turno (min)'</span>, <span class="st">'Nº turnos'</span>, <span class="st">'Output Médio'</span>, <span class="st">'Tempo (min)'</span>, <span class="st">'Tempo (horas)'</span>]</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Output Médio'</span>] <span class="op">=</span> summary_display[<span class="st">'Output Médio'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1%}</span><span class="ss">'</span>)</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (min)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1f}</span><span class="ss">'</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'speed'</span>] <span class="op">=</span> DISTANCIA_KM <span class="op">/</span> summary_display[<span class="st">'race_time_hours'</span>]</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>summary_display.columns <span class="op">=</span> [<span class="st">'Turno (min)'</span>, <span class="st">'Nº turnos'</span>, <span class="st">'Output Médio'</span>, <span class="st">'Tempo (min)'</span>, <span class="st">'Tempo (horas)'</span>, <span class="st">'Velocidade (km/h)'</span>]</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Output Médio'</span>] <span class="op">=</span> summary_display[<span class="st">'Output Médio'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1%}</span><span class="ss">'</span>)</span>
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (horas)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (horas)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>summary_display</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Velocidade (km/h)'</span>] <span class="op">=</span> summary_display[<span class="st">'Velocidade (km/h)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary_display.drop(columns<span class="op">=</span>[<span class="st">'Tempo (min)'</span>])</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>summary_display.set_index(<span class="st">'Turno (min)'</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>summary_display</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div id="tbl-resultados" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="7">
+<div id="tbl-resultados" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="8">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Table&nbsp;2: Comparação de tempos por duração de turno
 </figcaption>
 <div aria-describedby="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="7">
+<div class="cell-output cell-output-display" data-execution_count="8">
 <div>
 
 
@@ -571,109 +661,26 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th">turno (min)</th>
 <th data-quarto-table-cell-role="th">Nº turnos</th>
 <th data-quarto-table-cell-role="th">Output Médio</th>
-<th data-quarto-table-cell-role="th">Tempo (min)</th>
 <th data-quarto-table-cell-role="th">Tempo (horas)</th>
+<th data-quarto-table-cell-role="th">Velocidade (km/h)</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Turno (min)</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
-<td>8</td>
-<td>46</td>
-<td>73.3%</td>
-<td>438.5</td>
-<td>7.31</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
-<td>9</td>
-<td>41</td>
-<td>73.1%</td>
-<td>436.4</td>
-<td>7.27</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
-<td>10</td>
-<td>37</td>
-<td>72.8%</td>
-<td>435.0</td>
-<td>7.25</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
-<td>11</td>
-<td>34</td>
-<td>72.4%</td>
-<td>434.5</td>
-<td>7.24</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
-<td>12</td>
-<td>31</td>
-<td>71.9%</td>
-<td>434.1</td>
-<td>7.24</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">5</td>
-<td>13</td>
-<td>29</td>
-<td>71.3%</td>
-<td>434.5</td>
-<td>7.24</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">6</td>
-<td>14</td>
-<td>27</td>
+<td data-quarto-table-cell-role="th">14</td>
+<td>26</td>
 <td>70.6%</td>
-<td>435.1</td>
-<td>7.25</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7</td>
-<td>15</td>
-<td>25</td>
-<td>69.9%</td>
-<td>436.0</td>
-<td>7.27</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8</td>
-<td>16</td>
-<td>23</td>
-<td>69.1%</td>
-<td>436.9</td>
-<td>7.28</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">9</td>
-<td>17</td>
-<td>22</td>
-<td>68.2%</td>
-<td>438.5</td>
-<td>7.31</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
-<td>18</td>
-<td>21</td>
-<td>67.3%</td>
-<td>440.4</td>
-<td>7.34</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">11</td>
-<td>19</td>
-<td>20</td>
-<td>66.3%</td>
-<td>442.5</td>
-<td>7.37</td>
+<td>7.18</td>
+<td>8.36</td>
 </tr>
 </tbody>
 </table>
@@ -687,13 +694,13 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 </section>
 <section id="trade-off-trocas-vs.-fadiga" class="level3">
 <h3 class="anchored" data-anchor-id="trade-off-trocas-vs.-fadiga">Trade-off: Trocas vs.&nbsp;Fadiga</h3>
-<div id="cell-fig-tradeoff" class="cell" data-execution_count="8">
+<div id="cell-fig-tradeoff" class="cell" data-execution_count="9">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fig, ax1 <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>color1 <span class="op">=</span> <span class="st">'tab:blue'</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>ax1.set_xlabel(<span class="st">'Duração do turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>ax1.set_xlabel(<span class="st">'Duração do Turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>ax1.set_ylabel(<span class="st">'Número de Trocas'</span>, color<span class="op">=</span>color1, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>ax1.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'n_stints'</span>] <span class="op">-</span> <span class="dv">1</span>, color<span class="op">=</span>color1, marker<span class="op">=</span><span class="st">'s'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Trocas'</span>)</span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>ax1.tick_params(axis<span class="op">=</span><span class="st">'y'</span>, labelcolor<span class="op">=</span>color1)</span>
@@ -740,14 +747,14 @@ Configuração Recomendada
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>Duração do turno: 12 minutos</strong></p>
-<p>Tempo estimado de prova: <strong>434.1 minutos</strong> (7.2 horas)</p>
+<p><strong>Duração do turno: 14 minutos</strong></p>
+<p>Tempo estimado de prova: <strong>430.5 minutos</strong> (7.2 horas)</p>
 </div>
 </div>
 <section id="regras-de-rotação" class="level3">
 <h3 class="anchored" data-anchor-id="regras-de-rotação">Regras de Rotação</h3>
 <p>Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:</p>
-<div id="0c49bab8" class="cell" data-execution_count="9">
+<div id="0057fc21" class="cell" data-execution_count="10">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Ciclo de Rotação (repete a cada 3 turnos):</span><span class="ch">\n</span><span class="st">"</span>)</span>
@@ -757,51 +764,41 @@ Configuração Recomendada
 <div class="cell-output cell-output-stdout">
 <pre><code>Ciclo de Rotação (repete a cada 3 turnos):
 
-  Eduardo      Seat 2* → Seat 1 → Rest
-  Vitor        Seat 2 → Seat 1 → Rest*
-  Guilherme    Seat 2 → Seat 1* → Rest
-  Ricardo      Seat 3 → Seat 3* → Rest
-  Airton       Seat 5 → Seat 5* → Rest
-  Everson      Seat 3 → Seat 4 → Rest*
-  Sergio       Seat 4* → Seat 4 → Rest
-  Marcelo      Seat 5 → Seat 6 → Rest*
-  Zé           Seat 6* → Seat 6 → Rest</code></pre>
+  Eduardo      Banco 2 → Banco 2 → Descanso*
+  Guilherme    Banco 1 → Banco 1* → Descanso
+  Vitor        Banco 5 → Banco 6 → Descanso*
+  Ricardo      Banco 3 → Banco 5* → Descanso
+  Airton       Banco 3* → Banco 3 → Descanso
+  Everson      Banco 2* → Banco 1 → Descanso
+  Sergio       Banco 4 → Banco 4 → Descanso*
+  Marcelo      Banco 5 → Banco 4* → Descanso
+  Zé           Banco 6* → Banco 6 → Descanso</code></pre>
 </div>
 </div>
 </section>
-<section id="cronograma-completo" class="level3">
-<h3 class="anchored" data-anchor-id="cronograma-completo">Cronograma Completo</h3>
-<div class="cell" data-execution_count="10">
+<section id="ciclo-de-rotação" class="level3">
+<h3 class="anchored" data-anchor-id="ciclo-de-rotação">Ciclo de Rotação</h3>
+<p>O cronograma segue um ciclo de <strong>3 turnos que se repete</strong> durante toda a prova:</p>
+<div class="cell" data-execution_count="11">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>schedule <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'schedule'</span>].copy()</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>schedule.columns <span class="op">=</span> schedule.columns.<span class="bu">str</span>.strip()</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>schedule.index.name <span class="op">=</span> <span class="st">'Stint'</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename seats</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>schedule.columns <span class="op">=</span> [<span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Add durations (minutes per stint)</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo (min)'</span>] <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'stint_min'</span>]</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Add pretty hh:mm</span></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo'</span>] <span class="op">=</span> schedule[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="op">//</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss">h</span><span class="sc">{</span>x<span class="op">%</span><span class="dv">60</span><span class="sc">:02.0f}</span><span class="ss">'</span>)</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>schedule[[<span class="st">'Tempo'</span>, <span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]]</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar coluna de tempo</span></span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>schedule[<span class="st">'Tempo'</span>] <span class="op">=</span> schedule[<span class="st">'Tempo (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="op">//</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss">h</span><span class="sc">{</span>x<span class="op">%</span><span class="dv">60</span><span class="sc">:02.0f}</span><span class="ss">'</span>)</span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>schedule[[<span class="st">'Tempo'</span>, <span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Show 6 rows (2 full cycles) to make pattern obvious</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>n_rows <span class="op">=</span> <span class="bu">min</span>(<span class="dv">6</span>, <span class="bu">len</span>(schedule))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>cycle <span class="op">=</span> schedule.head(n_rows).copy()</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>cycle.index <span class="op">=</span> [<span class="ss">f'Turno </span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">'</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_rows)]</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>cycle.columns <span class="op">=</span> [<span class="st">'Banco 1'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6'</span>]</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>cycle</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div id="tbl-schedule" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="10">
+<div id="tbl-schedule" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="11">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-schedule-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;3: Cronograma completo da prova
+Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 </figcaption>
 <div aria-describedby="tbl-schedule-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="10">
+<div class="cell-output cell-output-display" data-execution_count="11">
 <div>
 
 
@@ -809,7 +806,6 @@ Table&nbsp;3: Cronograma completo da prova
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th">Tempo</th>
 <th data-quarto-table-cell-role="th">Banco 1</th>
 <th data-quarto-table-cell-role="th">Banco 2</th>
 <th data-quarto-table-cell-role="th">Banco 3</th>
@@ -817,327 +813,61 @@ Table&nbsp;3: Cronograma completo da prova
 <th data-quarto-table-cell-role="th">Banco 5</th>
 <th data-quarto-table-cell-role="th">Banco 6</th>
 </tr>
-<tr class="odd">
-<th data-quarto-table-cell-role="th">Stint</th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th"></th>
-</tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
-<td>0h12</td>
+<td data-quarto-table-cell-role="th">Turno 1</td>
 <td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
+<td>Everson</td>
 <td>Airton</td>
+<td>Marcelo</td>
+<td>Ricardo</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
+<td data-quarto-table-cell-role="th">Turno 2</td>
 <td>Everson</td>
+<td>Eduardo</td>
+<td>Airton</td>
 <td>Sergio</td>
-<td>Marcelo</td>
+<td>Vitor</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
-<td>0h12</td>
-<td>Vitor</td>
+<td data-quarto-table-cell-role="th">Turno 3</td>
 <td>Guilherme</td>
+<td>Eduardo</td>
 <td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
+<td>Sergio</td>
 <td>Marcelo</td>
+<td>Vitor</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
-<td>0h12</td>
+<td data-quarto-table-cell-role="th">Turno 4</td>
 <td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
+<td>Everson</td>
 <td>Airton</td>
+<td>Marcelo</td>
+<td>Ricardo</td>
 <td>Zé</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
+<td data-quarto-table-cell-role="th">Turno 5</td>
 <td>Everson</td>
+<td>Eduardo</td>
+<td>Airton</td>
 <td>Sergio</td>
-<td>Marcelo</td>
+<td>Vitor</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">5</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">6</td>
-<td>0h12</td>
+<td data-quarto-table-cell-role="th">Turno 6</td>
 <td>Guilherme</td>
 <td>Eduardo</td>
 <td>Ricardo</td>
 <td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
 <td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8</td>
-<td>0h12</td>
 <td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">9</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">11</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">12</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">13</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">15</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">16</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">17</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">18</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">19</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">20</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">21</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">22</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">23</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">24</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">25</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">26</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">27</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">28</td>
-<td>0h12</td>
-<td>Eduardo</td>
-<td>Vitor</td>
-<td>Everson</td>
-<td>Sergio</td>
-<td>Marcelo</td>
-<td>Zé</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">29</td>
-<td>0h12</td>
-<td>Vitor</td>
-<td>Guilherme</td>
-<td>Ricardo</td>
-<td>Everson</td>
-<td>Airton</td>
-<td>Marcelo</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">30</td>
-<td>0h12</td>
-<td>Guilherme</td>
-<td>Eduardo</td>
-<td>Ricardo</td>
-<td>Sergio</td>
-<td>Airton</td>
-<td>Zé</td>
 </tr>
 </tbody>
 </table>
@@ -1148,33 +878,149 @@ Table&nbsp;3: Cronograma completo da prova
 </figure>
 </div>
 </div>
-</section>
-<section id="visualização-do-cronograma" class="level3">
-<h3 class="anchored" data-anchor-id="visualização-do-cronograma">Visualização do Cronograma</h3>
-<div id="cell-fig-heatmap" class="cell" data-execution_count="11">
+<div class="cell" data-execution_count="12">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>schedule_matrix <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'schedule'</span>].copy()</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>paddler_to_num <span class="op">=</span> {name: i <span class="cf">for</span> i, name <span class="kw">in</span> <span class="bu">enumerate</span>(paddlers[<span class="st">'name'</span>])}</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>schedule_numeric <span class="op">=</span> schedule_matrix.replace(paddler_to_num)</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">10</span>))</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(schedule_numeric.values, cmap<span class="op">=</span><span class="st">'tab10'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ax.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ax.set_xticklabels([<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Proa)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>])</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ax.set_yticks(<span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix)))</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ax.set_yticklabels([<span class="ss">f'Stint </span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">'</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix))])</span>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate per-stint statistics</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>params <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'parameters'</span>]</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>trim_stats <span class="op">=</span> params.get(<span class="st">'trim_stats'</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>seat_positions <span class="op">=</span> trim_stats[<span class="st">'seat_positions'</span>] <span class="cf">if</span> trim_stats <span class="cf">else</span> [<span class="op">-</span><span class="fl">2.5</span>, <span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="fl">1.5</span>, <span class="fl">2.5</span>]</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>name_to_weight <span class="op">=</span> <span class="bu">dict</span>(<span class="bu">zip</span>(paddlers[<span class="st">'name'</span>], peso))</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>name_to_ability <span class="op">=</span> <span class="bu">dict</span>(<span class="bu">zip</span>(paddlers[<span class="st">'name'</span>], habilidade))</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>seat_weights <span class="op">=</span> [<span class="fl">1.05</span>, <span class="fl">1.02</span>, <span class="fl">1.02</span>, <span class="fl">1.01</span>, <span class="fl">1.00</span>, <span class="fl">1.10</span>]</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>cycle_stats <span class="op">=</span> []</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">3</span>):  <span class="co"># cycle length = 3</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    row <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'cycle_schedule'</span>].iloc[t]</span>
 <span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar nomes nas células</span></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(schedule_matrix)):</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        name <span class="op">=</span> schedule_matrix.iloc[i, j]</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        ax.text(j, i, name[:<span class="dv">3</span>], ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">8</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, color<span class="op">=</span><span class="st">'white'</span>)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate weighted power output (sum of ability * seat_weight)</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    power <span class="op">=</span> <span class="bu">sum</span>(name_to_ability.get(name, <span class="fl">1.0</span>) <span class="op">*</span> seat_weights[s] <span class="cf">for</span> s, name <span class="kw">in</span> <span class="bu">enumerate</span>(row))</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Calculate trim moment</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    trim <span class="op">=</span> <span class="bu">sum</span>(name_to_weight.get(name, <span class="dv">75</span>) <span class="op">*</span> seat_positions[s] <span class="cf">for</span> s, name <span class="kw">in</span> <span class="bu">enumerate</span>(row))</span>
 <span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Cronograma de Rotação - Desafio 60K 2025'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Speed is proportional to power (simplified)</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>    base_speed <span class="op">=</span> VELOCIDADE_KMH</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>    speed <span class="op">=</span> base_speed <span class="op">*</span> (power <span class="op">/</span> <span class="bu">sum</span>(seat_weights))  <span class="co"># Normalize by ideal power</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>    cycle_stats.append({</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Turno'</span>: <span class="ss">f'</span><span class="sc">{</span>t<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">'</span>,</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Output'</span>: <span class="ss">f'</span><span class="sc">{</span>power<span class="sc">:.2f}</span><span class="ss">'</span>,</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Velocidade (km/h)'</span>: <span class="ss">f'</span><span class="sc">{</span>speed<span class="sc">:.2f}</span><span class="ss">'</span>,</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Trim (kg-m)'</span>: <span class="ss">f'</span><span class="sc">{</span>trim<span class="sc">:+.1f}</span><span class="ss">'</span>,</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(cycle_stats).set_index(<span class="st">'Turno'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-cycle-stats" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="12">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cycle-stats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Estatísticas por turno do ciclo
+</figcaption>
+<div aria-describedby="tbl-cycle-stats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="12">
+<div>
+
+
+<table class="dataframe do-not-create-environment cell caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Output</th>
+<th data-quarto-table-cell-role="th">Velocidade (km/h)</th>
+<th data-quarto-table-cell-role="th">Trim (kg-m)</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Turno</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1</td>
+<td>6.25</td>
+<td>10.08</td>
+<td>+3.5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">2</td>
+<td>6.24</td>
+<td>10.07</td>
+<td>+5.0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">3</td>
+<td>6.21</td>
+<td>10.02</td>
+<td>-1.5</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div id="cell-fig-heatmap" class="cell" data-execution_count="13">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> matplotlib.patches <span class="im">import</span> Rectangle</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Show 6 rows (2 full cycles)</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>n_rows <span class="op">=</span> <span class="bu">min</span>(<span class="dv">6</span>, <span class="bu">len</span>(results[<span class="st">'best'</span>][<span class="st">'schedule'</span>]))</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>schedule_matrix <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'schedule'</span>].head(n_rows).copy()</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>all_paddlers <span class="op">=</span> <span class="bu">set</span>(paddlers[<span class="st">'name'</span>])</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Build matrix with paddlers out (resting)</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>out_matrix <span class="op">=</span> []</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_rows):</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    in_canoe <span class="op">=</span> <span class="bu">set</span>(schedule_matrix.iloc[i].values)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> <span class="bu">sorted</span>(all_paddlers <span class="op">-</span> in_canoe)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    out_matrix.append(out)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>out_df <span class="op">=</span> pd.DataFrame(out_matrix, columns<span class="op">=</span>[<span class="st">'Fora 1'</span>, <span class="st">'Fora 2'</span>, <span class="st">'Fora 3'</span>])</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine in and out (9 columns total)</span></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>combined <span class="op">=</span> pd.concat([schedule_matrix.reset_index(drop<span class="op">=</span><span class="va">True</span>), out_df], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>paddler_to_num <span class="op">=</span> {name: i <span class="cf">for</span> i, name <span class="kw">in</span> <span class="bu">enumerate</span>(paddlers[<span class="st">'name'</span>])}</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>combined_numeric <span class="op">=</span> combined.replace(paddler_to_num)</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>fig, (ax1, ax2) <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">14</span>, <span class="dv">5</span>), gridspec_kw<span class="op">=</span>{<span class="st">'width_ratios'</span>: [<span class="dv">6</span>, <span class="dv">3</span>], <span class="st">'wspace'</span>: <span class="fl">0.05</span>})</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Left plot: seats (in canoe)</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>im1 <span class="op">=</span> ax1.imshow(combined_numeric.iloc[:, :<span class="dv">6</span>].values, cmap<span class="op">=</span><span class="st">'tab10'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>ax1.set_xticks(<span class="bu">range</span>(<span class="dv">6</span>))</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>ax1.set_xticklabels([<span class="st">'Banco 1</span><span class="ch">\n</span><span class="st">(Voga)'</span>, <span class="st">'Banco 2'</span>, <span class="st">'Banco 3'</span>, <span class="st">'Banco 4'</span>, <span class="st">'Banco 5'</span>, <span class="st">'Banco 6</span><span class="ch">\n</span><span class="st">(Leme)'</span>])</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>ax1.set_yticks(<span class="bu">range</span>(n_rows))</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>ax1.set_yticklabels([<span class="ss">f'Turno </span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">'</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_rows)])</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_rows):</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">6</span>):</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>        name <span class="op">=</span> combined.iloc[i, j]</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>        ax1.text(j, i, name[:<span class="dv">3</span>], ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">10</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, color<span class="op">=</span><span class="st">'white'</span>)</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a><span class="co"># Highlight first cycle</span></span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>rect <span class="op">=</span> Rectangle((<span class="op">-</span><span class="fl">0.5</span>, <span class="op">-</span><span class="fl">0.5</span>), <span class="dv">6</span>, <span class="dv">3</span>, linewidth<span class="op">=</span><span class="dv">3</span>, edgecolor<span class="op">=</span><span class="st">'yellow'</span>, facecolor<span class="op">=</span><span class="st">'none'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>)</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>ax1.add_patch(rect)</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="co"># Right plot: out (resting) - same colors as left</span></span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a>im2 <span class="op">=</span> ax2.imshow(combined_numeric.iloc[:, <span class="dv">6</span>:].values, cmap<span class="op">=</span><span class="st">'tab10'</span>, aspect<span class="op">=</span><span class="st">'auto'</span>)</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a>ax2.set_xticks(<span class="bu">range</span>(<span class="dv">3</span>))</span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a>ax2.set_xticklabels([<span class="st">'Fora 1'</span>, <span class="st">'Fora 2'</span>, <span class="st">'Fora 3'</span>])</span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>ax2.set_yticks(<span class="bu">range</span>(n_rows))</span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a>ax2.set_yticklabels([])</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_rows):</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">3</span>):</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a>        name <span class="op">=</span> combined.iloc[i, <span class="dv">6</span> <span class="op">+</span> j]</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true" tabindex="-1"></a>        ax2.text(j, i, name[:<span class="dv">3</span>], ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'center'</span>, fontsize<span class="op">=</span><span class="dv">10</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, color<span class="op">=</span><span class="st">'white'</span>)</span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="ss">f'Padrão de Rotação (ciclo de 3 turnos repete </span><span class="sc">{</span>results[<span class="st">"best"</span>][<span class="st">"n_stints"</span>] <span class="op">//</span> <span class="dv">3</span><span class="sc">}</span><span class="ss">x)'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="fig-heatmap" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1183,7 +1029,7 @@ Table&nbsp;3: Cronograma completo da prova
 <img src="desafio60k2025_files/figure-html/fig-heatmap-output-1.png" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heatmap-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Mapa de calor do cronograma de rotação
+Figure&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 </figcaption>
 </figure>
 </div>
@@ -1191,14 +1037,50 @@ Figure&nbsp;3: Mapa de calor do cronograma de rotação
 </div>
 </section>
 </section>
-<section id="resumo" class="level2">
-<h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
-<div id="d60a0060" class="cell" data-execution_count="12">
+<section id="análise-de-trim-balanço" class="level2">
+<h2 class="anchored" data-anchor-id="análise-de-trim-balanço">Análise de Trim (Balanço)</h2>
+<p>O modelo considera o balanço fore-aft (proa-popa) da canoa baseado no peso dos remadores. Momento de trim positivo = canoa pesada na popa. Momento de trim negativo = canoa pesada na proa.</p>
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>n_trocas <span class="op">=</span> n_stints <span class="op">-</span> <span class="dv">1</span></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>tempo_remando <span class="op">=</span> n_stints <span class="op">*</span> best_stint <span class="op">*</span> (<span class="dv">2</span><span class="op">/</span><span class="dv">3</span>)  <span class="co"># cada remador rema 2 de cada 3 stints</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>trim_stats <span class="op">=</span> results[<span class="st">'best'</span>].get(<span class="st">'parameters'</span>, {}).get(<span class="st">'trim_stats'</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> trim_stats:</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Momento de trim médio (absoluto): </span><span class="sc">{</span>trim_stats[<span class="st">'avg_abs_trim_moment'</span>]<span class="sc">:.1f}</span><span class="ss"> kg-m"</span>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Momento de trim máximo (absoluto): </span><span class="sc">{</span>trim_stats[<span class="st">'max_abs_trim_moment'</span>]<span class="sc">:.1f}</span><span class="ss"> kg-m"</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">Momentos por turno do ciclo:"</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> t, m <span class="kw">in</span> <span class="bu">enumerate</span>(trim_stats[<span class="st">'trim_moments'</span>]):</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>        direcao <span class="op">=</span> <span class="st">"popa"</span> <span class="cf">if</span> m <span class="op">&gt;</span> <span class="dv">0</span> <span class="cf">else</span> <span class="st">"proa"</span> <span class="cf">if</span> m <span class="op">&lt;</span> <span class="dv">0</span> <span class="cf">else</span> <span class="st">"neutro"</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"  Turno </span><span class="sc">{</span>t<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>m<span class="sc">:+.1f}</span><span class="ss"> kg-m (</span><span class="sc">{</span>direcao<span class="sc">}</span><span class="ss">)"</span>)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Trim não calculado (trim_penalty_weight = 0)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-trim" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="14">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-trim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;5: Análise de trim por turno do ciclo
+</figcaption>
+<div aria-describedby="tbl-trim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-stdout">
+<pre><code>Momento de trim médio (absoluto): 3.3 kg-m
+Momento de trim máximo (absoluto): 5.0 kg-m
+
+Momentos por turno do ciclo:
+  Turno 1: +3.5 kg-m (popa)
+  Turno 2: +5.0 kg-m (popa)
+  Turno 3: -1.5 kg-m (proa)</code></pre>
+</div>
+</div>
+</figure>
+</div>
+</section>
+<section id="resumo" class="level2">
+<h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
+<div id="376107b3" class="cell" data-execution_count="15">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>n_trocas <span class="op">=</span> n_stints <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>velocidade_efetiva <span class="op">=</span> DISTANCIA_KM <span class="op">/</span> (best_time <span class="op">/</span> <span class="dv">60</span>)  <span class="co"># km/h</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>subidas_por_remador <span class="op">=</span> n_stints <span class="op">/</span> <span class="dv">3</span>  <span class="co"># cada remador entra 1x por ciclo de 3 turnos</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <table class="caption-top table">
@@ -1215,27 +1097,35 @@ Figure&nbsp;3: Mapa de calor do cronograma de rotação
 </tr>
 <tr class="even">
 <td>Velocidade base</td>
-<td>9.8 km/h</td>
+<td>10 km/h</td>
 </tr>
 <tr class="odd">
-<td>Duração do stint</td>
-<td>12 min</td>
+<td><strong>Velocidade efetiva</strong></td>
+<td><strong>8.36 km/h</strong></td>
 </tr>
 <tr class="even">
-<td>Número de stints</td>
-<td>31</td>
+<td>Duração do turno</td>
+<td>14 min</td>
 </tr>
 <tr class="odd">
+<td>Número de turnos</td>
+<td>26</td>
+</tr>
+<tr class="even">
 <td>Número de trocas</td>
-<td>30</td>
+<td>25</td>
+</tr>
+<tr class="odd">
+<td>Subidas por remador</td>
+<td>8.7 (média)</td>
 </tr>
 <tr class="even">
 <td>Tempo por troca</td>
-<td>0.5 min</td>
+<td>40 s</td>
 </tr>
 <tr class="odd">
 <td><strong>Tempo total</strong></td>
-<td><strong>434.1 min</strong> (7.2 h)</td>
+<td><strong>430.5 min</strong> (7.2 h)</td>
 </tr>
 </tbody>
 </table>
