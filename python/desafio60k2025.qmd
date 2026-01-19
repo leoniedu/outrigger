@@ -195,34 +195,37 @@ results = optimize_stint_range(
 
 ```{python}
 #| label: fig-comparacao
-#| fig-cap: "Tempo de prova vs. duração do turno"
+#| fig-cap: "Tempo de prova vs. distância do turno"
 
-summary = results['summary']
+summary = results['summary'].copy()
+# Add stint time in minutes for display
+summary['stint_min'] = summary['stint_km'] / VELOCIDADE_KMH * 60
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
 # Gráfico principal
-ax.plot(summary['stint_min'], summary['race_time'], 'b-o', linewidth=2, markersize=8)
+ax.plot(summary['stint_km'], summary['race_time'], 'b-o', linewidth=2, markersize=8)
 
 # Destacar o melhor
 best_idx = summary['race_time'].idxmin()
-best_stint = int(summary.loc[best_idx, 'stint_min'])
+best_stint_km = summary.loc[best_idx, 'stint_km']
+best_stint_min = summary.loc[best_idx, 'stint_min']
 best_time = summary.loc[best_idx, 'race_time']
 
-ax.scatter([best_stint], [best_time], color='red', s=200, zorder=5, label=f'Ótimo: {best_stint} min')
+ax.scatter([best_stint_km], [best_time], color='red', s=200, zorder=5, label=f'Ótimo: {best_stint_km:.1f} km')
 ax.axhline(y=best_time, color='red', linestyle='--', alpha=0.5)
-ax.axvline(x=best_stint, color='red', linestyle='--', alpha=0.5)
+ax.axvline(x=best_stint_km, color='red', linestyle='--', alpha=0.5)
 
-ax.set_xlabel('Duração do Turno (minutos)', fontsize=12)
+ax.set_xlabel('Distância do Turno (km)', fontsize=12)
 ax.set_ylabel('Tempo Total de Prova (minutos)', fontsize=12)
-ax.set_title('Otimização da Duração do Turno', fontsize=14, fontweight='bold')
+ax.set_title('Otimização da Distância do Turno', fontsize=14, fontweight='bold')
 ax.legend()
 ax.grid(True, alpha=0.3)
 
 # Adicionar anotação
 ax.annotate(f'{best_time:.1f} min\n({best_time/60:.1f} horas)',
-            xy=(best_stint, best_time),
-            xytext=(best_stint + 2, best_time + 3),
+            xy=(best_stint_km, best_time),
+            xytext=(best_stint_km + 0.3, best_time + 3),
             fontsize=11,
             arrowprops=dict(arrowstyle='->', color='red'))
 
@@ -234,17 +237,26 @@ plt.show()
 
 ```{python}
 #| label: tbl-resultados
-#| tbl-cap: "Comparação de tempos por duração de turno"
+#| tbl-cap: "Comparação de tempos por distância de turno"
 
-summary_display = summary.copy()
+summary_display = summary[['stint_km', 'stint_min', 'n_stints', 'avg_output', 'race_time']].copy()
 summary_display['race_time_hours'] = summary_display['race_time'] / 60
 summary_display['speed'] = DISTANCIA_KM / summary_display['race_time_hours']
-summary_display.columns = ['Turno (min)', 'Nº turnos', 'Output Médio', 'Tempo (min)', 'Tempo (horas)', 'Velocidade (km/h)']
+summary_display = summary_display.rename(columns={
+    'stint_km': 'Turno (km)',
+    'stint_min': 'Turno (min)',
+    'n_stints': 'Nº turnos',
+    'avg_output': 'Output Médio',
+    'race_time': 'Tempo (min)',
+    'race_time_hours': 'Tempo (horas)',
+    'speed': 'Velocidade (km/h)'
+})
+summary_display['Turno (min)'] = summary_display['Turno (min)'].apply(lambda x: f'{x:.0f}')
 summary_display['Output Médio'] = summary_display['Output Médio'].apply(lambda x: f'{x:.1%}')
 summary_display['Tempo (horas)'] = summary_display['Tempo (horas)'].apply(lambda x: f'{x:.2f}')
 summary_display['Velocidade (km/h)'] = summary_display['Velocidade (km/h)'].apply(lambda x: f'{x:.2f}')
 summary_display = summary_display.drop(columns=['Tempo (min)'])
-summary_display.set_index('Turno (min)', inplace=True)
+summary_display.set_index('Turno (km)', inplace=True)
 summary_display
 ```
 
@@ -257,19 +269,19 @@ summary_display
 fig, ax1 = plt.subplots(figsize=(10, 6))
 
 color1 = 'tab:blue'
-ax1.set_xlabel('Duração do Turno (minutos)', fontsize=12)
+ax1.set_xlabel('Distância do Turno (km)', fontsize=12)
 ax1.set_ylabel('Número de Trocas', color=color1, fontsize=12)
-ax1.plot(summary['stint_min'], summary['n_stints'] - 1, color=color1, marker='s', linewidth=2, label='Trocas')
+ax1.plot(summary['stint_km'], summary['n_stints'] - 1, color=color1, marker='s', linewidth=2, label='Trocas')
 ax1.tick_params(axis='y', labelcolor=color1)
 
 ax2 = ax1.twinx()
 color2 = 'tab:orange'
 ax2.set_ylabel('Output Médio (%)', color=color2, fontsize=12)
-ax2.plot(summary['stint_min'], summary['avg_output'] * 100, color=color2, marker='o', linewidth=2, label='Output')
+ax2.plot(summary['stint_km'], summary['avg_output'] * 100, color=color2, marker='o', linewidth=2, label='Output')
 ax2.tick_params(axis='y', labelcolor=color2)
 
 # Linha vertical no ótimo
-ax1.axvline(x=best_stint, color='red', linestyle='--', alpha=0.5, label=f'Ótimo: {best_stint} min')
+ax1.axvline(x=best_stint_km, color='red', linestyle='--', alpha=0.5, label=f'Ótimo: {best_stint_km:.1f} km')
 
 fig.suptitle('Trade-off: Menos Trocas vs. Mais Fadiga', fontsize=14, fontweight='bold')
 fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.02), ncol=3)
@@ -282,7 +294,7 @@ plt.show()
 
 ::: {.callout-tip}
 ## Configuração Recomendada
-**Duração do turno: `{python} best_stint` minutos**
+**Distância do turno: `{python} f'{best_stint_km:.1f}'` km** (~`{python} f'{best_stint_min:.0f}'` minutos)
 
 Tempo estimado de prova: **`{python} f'{best_time:.1f}'` minutos** (`{python} f'{best_time/60:.1f}'` horas)
 :::
@@ -451,7 +463,7 @@ subidas_por_remador = n_stints / 3  # cada remador entra 1x por ciclo de 3 turno
 | Distância | `{python} DISTANCIA_KM` km |
 | Velocidade base | `{python} VELOCIDADE_KMH` km/h |
 | **Velocidade efetiva** | **`{python} f'{velocidade_efetiva:.2f}'` km/h** |
-| Duração do turno | `{python} best_stint` min |
+| Distância do turno | `{python} f'{best_stint_km:.1f}'` km (~`{python} f'{best_stint_min:.0f}'` min) |
 | Número de turnos | `{python} n_stints` |
 | Número de trocas | `{python} n_trocas` |
 | Subidas por remador | `{python} f'{subidas_por_remador:.1f}'` (média) |
