@@ -109,6 +109,50 @@ def average_output_stateful(stint_min, fatigue_at_start, step=0.25,
     return float(np.mean(vals)) if vals else 1.0
 
 
+def compute_stint_time(stint_km, speed_kmh, fatigue_at_start,
+                       step_seconds=15, tau_warmup=2, work_rate=0.015,
+                       power_speed_exponent=0.4):
+    """
+    Compute time to cover stint_km given fatigue state.
+
+    Iteratively simulates: power -> speed -> distance until target reached.
+
+    Args:
+        stint_km: distance to cover in this stint (km)
+        speed_kmh: base speed at power=1.0 (km/h)
+        fatigue_at_start: fatigue level at start (0=fresh, 1=exhausted)
+        step_seconds: simulation time step in seconds (default 15)
+        tau_warmup: warmup time constant in minutes (default 2)
+        work_rate: W' depletion per minute of work (default 0.015)
+        power_speed_exponent: exponent for power-to-speed (default 0.4)
+
+    Returns:
+        dict with 'stint_time_min', 'avg_output', 'fatigue_at_end'
+    """
+    distance_covered = 0.0
+    time_elapsed_min = 0.0
+    fatigue = fatigue_at_start
+    outputs = []
+
+    step_min = step_seconds / 60.0
+
+    while distance_covered < stint_km:
+        power = output_power(time_elapsed_min, fatigue, tau_warmup)
+        outputs.append(power)
+        speed_kmh_actual = power_to_speed(power, power_speed_exponent) * speed_kmh
+
+        # Advance by time step
+        distance_covered += speed_kmh_actual * (step_min / 60.0)  # km
+        time_elapsed_min += step_min
+        fatigue += work_rate * step_min
+
+    return {
+        'stint_time_min': time_elapsed_min,
+        'avg_output': float(np.mean(outputs)) if outputs else 1.0,
+        'fatigue_at_end': min(fatigue, 1.0)
+    }
+
+
 def compute_cycle_output_table(cycle_pattern, stint_min, n_cycles_converge=10,
                                work_rate=0.015, tau_recovery=7):
     """
@@ -162,3 +206,92 @@ def compute_cycle_output_table(cycle_pattern, stint_min, n_cycles_converge=10,
         result[p] = outputs
 
     return result
+
+
+def compute_cycle_stint_table(cycle_pattern, stint_km, speed_kmh,
+                               n_cycles_converge=10, work_rate=0.015,
+                               tau_recovery=7, power_speed_exponent=0.4):
+    """
+    Precompute fatigue-adjusted output and stint times for distance-based stints.
+
+    Simulates fatigue through multiple cycles until steady-state is reached.
+    Unlike compute_cycle_output_table, this computes actual stint times based
+    on the distance to cover and the paddler's varying power output.
+
+    Args:
+        cycle_pattern: dict mapping paddler_id -> list of bools (True=paddling)
+        stint_km: distance per stint in kilometers
+        speed_kmh: base speed at power=1.0 (km/h)
+        n_cycles_converge: number of cycles to simulate for steady-state
+        work_rate: W' depletion per minute of work
+        tau_recovery: recovery time constant in minutes
+        power_speed_exponent: exponent for power-to-speed conversion
+
+    Returns:
+        dict with:
+            'outputs': dict mapping paddler_id -> list of avg output per cycle position
+            'stint_times': dict mapping paddler_id -> list of stint times (min) per position
+            'fatigue_at_start': dict mapping paddler_id -> list of fatigue at start of each position
+    """
+    cycle_length = len(next(iter(cycle_pattern.values())))
+
+    # Initialize fatigue for each paddler
+    fatigue = {p: 0.0 for p in cycle_pattern}
+
+    # First, estimate typical stint time for convergence simulation
+    # Use compute_stint_time with fresh paddler to get ballpark
+    est_result = compute_stint_time(stint_km, speed_kmh, 0.0,
+                                     work_rate=work_rate,
+                                     power_speed_exponent=power_speed_exponent)
+    estimated_stint_min = est_result['stint_time_min']
+
+    # Simulate multiple cycles to reach steady state using estimated stint time
+    for cycle_idx in range(n_cycles_converge - 1):
+        for t in range(cycle_length):
+            for p, pattern in cycle_pattern.items():
+                if pattern[t]:  # paddling
+                    fatigue[p] = update_fatigue(fatigue[p], estimated_stint_min, 0,
+                                                 work_rate, tau_recovery)
+                else:  # resting
+                    fatigue[p] = update_fatigue(fatigue[p], 0, estimated_stint_min,
+                                                 work_rate, tau_recovery)
+
+    # Store fatigue at start of final cycle for accurate computation
+    cycle_fatigue_start = {p: [] for p in cycle_pattern}
+    for t in range(cycle_length):
+        for p, pattern in cycle_pattern.items():
+            cycle_fatigue_start[p].append(fatigue[p])
+
+            if pattern[t]:  # paddling
+                fatigue[p] = update_fatigue(fatigue[p], estimated_stint_min, 0,
+                                             work_rate, tau_recovery)
+            else:  # resting
+                fatigue[p] = update_fatigue(fatigue[p], 0, estimated_stint_min,
+                                             work_rate, tau_recovery)
+
+    # Compute outputs and stint times using actual simulation
+    outputs = {}
+    stint_times = {}
+
+    for p, pattern in cycle_pattern.items():
+        p_outputs = []
+        p_stint_times = []
+        for t in range(cycle_length):
+            if pattern[t]:
+                result = compute_stint_time(stint_km, speed_kmh,
+                                             cycle_fatigue_start[p][t],
+                                             work_rate=work_rate,
+                                             power_speed_exponent=power_speed_exponent)
+                p_outputs.append(result['avg_output'])
+                p_stint_times.append(result['stint_time_min'])
+            else:
+                p_outputs.append(0.0)
+                p_stint_times.append(0.0)  # Resting, no time contribution
+        outputs[p] = p_outputs
+        stint_times[p] = p_stint_times
+
+    return {
+        'outputs': outputs,
+        'stint_times': stint_times,
+        'fatigue_at_start': cycle_fatigue_start
+    }

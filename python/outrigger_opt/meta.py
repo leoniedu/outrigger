@@ -3,7 +3,7 @@ from .model import solve_rotation_cycle
 
 
 def optimize_stint_range(paddlers,
-                         stint_range=(30, 35, 40, 45, 50, 55, 60),
+                         stint_km_range=(1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0),
                          max_consecutive=6,
                          distance_km=60,
                          speed_kmh=10,
@@ -14,15 +14,19 @@ def optimize_stint_range(paddlers,
                          paddler_ability=None,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
+                         moi_penalty_weight=0.0,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
                          gap_tolerance=0.01):
-    """Grid search over stint durations to find optimal stint length.
+    """Grid search over stint distances to find optimal stint length.
+
+    Uses distance-based stints where n_stints = ceil(distance_km / stint_km)
+    is deterministic, creating smooth optimization curves.
 
     Args:
         paddlers: DataFrame with 'name' column
-        stint_range: Tuple of stint durations to test (in minutes)
+        stint_km_range: Tuple of stint distances to test (in kilometers)
         max_consecutive: Maximum consecutive stints (variable bound)
         distance_km: Race distance in kilometers
         speed_kmh: Base speed at output 1.0 in km/h
@@ -33,9 +37,10 @@ def optimize_stint_range(paddlers,
         paddler_ability: Optional list of ability multipliers per paddler
         paddler_weight: Optional list of weights per paddler (kg or relative)
         trim_penalty_weight: Penalty weight for trim imbalance (default 0.0 = disabled)
+        moi_penalty_weight: Penalty weight for weight concentration at ends (default 0.0 = disabled)
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
-        solver_time_secs: Maximum solver computation time in seconds per stint duration
+        solver_time_secs: Maximum solver computation time in seconds per stint distance
         gap_tolerance: Acceptable gap from optimal (default 0.01 = 1%)
 
     Returns:
@@ -43,10 +48,10 @@ def optimize_stint_range(paddlers,
         and 'results' (list of all results)
     """
     results = []
-    for stint_min in stint_range:
+    for stint_km in stint_km_range:
         res = solve_rotation_cycle(
             paddlers,
-            stint_min=stint_min,
+            stint_km=stint_km,
             max_consecutive=max_consecutive,
             distance_km=distance_km,
             speed_kmh=speed_kmh,
@@ -57,14 +62,16 @@ def optimize_stint_range(paddlers,
             paddler_ability=paddler_ability,
             paddler_weight=paddler_weight,
             trim_penalty_weight=trim_penalty_weight,
+            moi_penalty_weight=moi_penalty_weight,
             n_seats=n_seats,
             n_resting=n_resting,
             solver_time_secs=solver_time_secs,
             gap_tolerance=gap_tolerance,
         )
         results.append({
-            "stint_min": stint_min,
+            "stint_km": stint_km,
             "n_stints": res["parameters"]["n_stints"],
+            "avg_stint_time_min": res["parameters"]["avg_stint_time_min"],
             "avg_output": res["avg_output"],
             "race_time": res["race_time"],
             "schedule": res["schedule"],
@@ -73,7 +80,7 @@ def optimize_stint_range(paddlers,
             "parameters": res["parameters"],
         })
     summary = pd.DataFrame([
-        {k: r[k] for k in ["stint_min", "n_stints", "avg_output", "race_time"]}
+        {k: r[k] for k in ["stint_km", "n_stints", "avg_stint_time_min", "avg_output", "race_time"]}
         for r in results
     ])
     best = min(results, key=lambda r: r["race_time"])

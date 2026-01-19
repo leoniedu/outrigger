@@ -3,7 +3,9 @@ import itertools, math
 import pandas as pd
 import numpy as np
 from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus, value, PULP_CBC_CMD
-from .fatigue import compute_output_table, compute_cycle_output_table, power_to_speed
+from .fatigue import (compute_output_table, compute_cycle_output_table,
+                      compute_cycle_stint_table, compute_stint_time,
+                      power_to_speed, update_fatigue)
 
 
 def validate_paddlers(paddlers, n_seats=6, n_paddlers=9):
@@ -73,14 +75,14 @@ def validate_eligibility(eligibility, n_paddlers, n_seats):
             raise ValueError(f"Paddler {p} is not eligible for any seat")
 
 
-def validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_secs):
+def validate_params(stint_km, max_consecutive, distance_km, speed_kmh, switch_time_secs):
     """Validate optimization parameters.
 
     Raises:
         ValueError: If any parameter is invalid
     """
-    if stint_min <= 0:
-        raise ValueError(f"stint_min must be positive, got {stint_min}")
+    if stint_km <= 0:
+        raise ValueError(f"stint_km must be positive, got {stint_km}")
     if max_consecutive < 1:
         raise ValueError(f"max_consecutive must be >= 1, got {max_consecutive}")
     if distance_km <= 0:
@@ -159,7 +161,7 @@ def format_cycle_rules(cycle_schedule, paddlers):
 
 
 def solve_rotation_cycle(paddlers,
-                         stint_min=40,
+                         stint_km=3.0,
                          max_consecutive=6,
                          distance_km=60,
                          speed_kmh=10,
@@ -170,6 +172,7 @@ def solve_rotation_cycle(paddlers,
                          paddler_ability=None,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
+                         moi_penalty_weight=0.0,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
@@ -186,13 +189,17 @@ def solve_rotation_cycle(paddlers,
     For 9 paddlers, 6 seats, 3 resting: cycle = 3 stints (paddle 2, rest 1).
     This reduces model size by ~66% compared to full-race model.
 
+    Uses distance-based stints: n_stints = ceil(distance_km / stint_km), which is
+    deterministic and independent of fatigue/output. Stint times vary based on
+    actual paddler output.
+
     Note: Pattern penalties (entry_rule_penalty, switch_rule_penalty) are not
     supported in the cycle model since the repeating cycle already produces
     a simple, consistent pattern.
 
     Args:
         paddlers: DataFrame with 'name' column
-        stint_min: Duration of each stint in minutes
+        stint_km: Distance per stint in kilometers (default 3.0)
         max_consecutive: Maximum consecutive stints (variable bound)
         distance_km: Race distance in kilometers
         speed_kmh: Base speed at output 1.0 in km/h
@@ -220,12 +227,12 @@ def solve_rotation_cycle(paddlers,
 
     Returns:
         dict with 'status', 'schedule', 'cycle_schedule', 'avg_output', 'race_time',
-        'parameters', 'paddler_summary', 'summary_stats'
+        'parameters', 'paddler_summary', 'summary_stats', 'stint_times'
     """
     # Validate inputs
     n_paddlers = n_seats + n_resting
     paddlers = validate_paddlers(paddlers, n_seats=n_seats, n_paddlers=n_paddlers)
-    validate_params(stint_min, max_consecutive, distance_km, speed_kmh, switch_time_secs)
+    validate_params(stint_km, max_consecutive, distance_km, speed_kmh, switch_time_secs)
 
     P = len(paddlers)
     S = n_seats
@@ -284,13 +291,20 @@ def solve_rotation_cycle(paddlers,
         raise ValueError(f"trim_penalty_weight must be non-negative, got {trim_penalty_weight}")
     use_trim_penalty = trim_penalty_weight > 0
 
+    # Validate MOI penalty weight
+    if moi_penalty_weight < 0:
+        raise ValueError(f"moi_penalty_weight must be non-negative, got {moi_penalty_weight}")
+    use_moi_penalty = moi_penalty_weight > 0
+
     # Seat positions for trim calculation (meters from center, negative = bow)
     seat_positions = [-(S-1)/2 + i for i in range(S)]  # e.g., [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5] for S=6
 
-    # Compute number of stints for race time calculation
-    n_stints = math.ceil((distance_km/speed_kmh*60)/stint_min)
+    # Compute number of stints - deterministic based on distance
+    n_stints = math.ceil(distance_km / stint_km)
 
-    output_table = compute_output_table(stint_min, max_consecutive)
+    # Estimate stint time for optimization output table (assume ~85% avg output)
+    estimated_stint_min = (stint_km / speed_kmh) * 60 / 0.85
+    output_table = compute_output_table(estimated_stint_min, max_consecutive)
 
     prob = LpProblem("OC6_Cycle", LpMaximize)
 
@@ -334,6 +348,14 @@ def solve_rotation_cycle(paddlers,
                    for t in range(cycle_length)}
         TrimNeg = {t: LpVariable(f"TrimNeg_{t}", lowBound=0, upBound=max_trim_moment, cat="Continuous")
                    for t in range(cycle_length)}
+
+    # MOI (moment of inertia) variables for weight concentration penalty
+    if use_moi_penalty:
+        max_paddler_weight = max(paddler_weight)
+        max_seat_pos_sq = max(p**2 for p in seat_positions)
+        max_moi = S * max_paddler_weight * max_seat_pos_sq
+        MOI = {t: LpVariable(f"MOI_{t}", lowBound=0, upBound=max_moi, cat="Continuous")
+               for t in range(cycle_length)}
 
     # Seat assignment constraints: exactly one paddler per seat
     for s,t in itertools.product(range(S), range(cycle_length)):
@@ -407,6 +429,31 @@ def solve_rotation_cycle(paddlers,
             # TrimPos - TrimNeg = trim_moment
             prob += TrimPos[t] - TrimNeg[t] == trim_moment, f"Trim_balance_{t}"
 
+    # MOI constraints (weight concentration - lower = better)
+    if use_moi_penalty:
+        for t in range(cycle_length):
+            # MOI = sum of weight × position² (always non-negative)
+            moi_expr = lpSum(
+                X[p, s, t] * paddler_weight[p] * (seat_positions[s] ** 2)
+                for (p, s) in eligible_pairs
+            )
+            prob += MOI[t] == moi_expr, f"MOI_{t}"
+
+    # Seat transition constraint: if paddling consecutively, can only move ±1 seat
+    # If resting in previous stint, paddler can enter any eligible seat
+    for p in range(P):
+        for t in range(cycle_length):
+            t_prev = (t - 1) % cycle_length  # wrap-around for t=0
+            for s in range(S):
+                if not eligibility[p, s]:
+                    continue
+                for s_next in range(S):
+                    if not eligibility[p, s_next]:
+                        continue
+                    if abs(s_next - s) > 1:  # non-adjacent seats
+                        prob += X[p, s, t_prev] + X[p, s_next, t] <= 1, \
+                            f"SeatTransition_p{p}_t{t}_s{s}_to_{s_next}"
+
     # Objective: Maximize weighted output minus entry weight penalties
     weighted_output = lpSum(
         Q[p,t,k] * output_table[k] * paddler_ability[p]
@@ -416,8 +463,10 @@ def solve_rotation_cycle(paddlers,
     objective = weighted_output
 
     if use_entry_weights:
-        nominal_paddle_time = distance_km / speed_kmh * 60
-        entry_weight_scale = (switch_time_secs / 60) / nominal_paddle_time * sum(seat_weights)
+        # Scale entry weight penalty relative to per-cycle output, not total race time
+        # Each cycle produces ~cycle_length stints worth of weighted output
+        cycle_paddle_time = cycle_length * estimated_stint_min
+        entry_weight_scale = (switch_time_secs / 60) / cycle_paddle_time * sum(seat_weights)
         # t=0 entries only happen (n_cycles - 1) times (first stint of race is free)
         # t>0 entries happen n_cycles times
         n_cycles = n_stints / cycle_length
@@ -441,6 +490,13 @@ def solve_rotation_cycle(paddlers,
         # Total absolute trim across all stints in cycle
         trim_penalty = trim_scale * lpSum(TrimPos[t] + TrimNeg[t] for t in range(cycle_length))
         objective = objective - trim_penalty
+
+    if use_moi_penalty:
+        # Scale MOI penalty: moi_penalty_weight=1.0 makes ~100 kg-m² worth ~1 unit of output
+        moi_scale = moi_penalty_weight / (100.0 * sum(seat_weights) / cycle_length)
+        # Total MOI across all stints in cycle (lower = weight concentrated in middle)
+        moi_penalty = moi_scale * lpSum(MOI[t] for t in range(cycle_length))
+        objective = objective - moi_penalty
 
     prob += objective
 
@@ -477,66 +533,124 @@ def solve_rotation_cycle(paddlers,
             for t in range(cycle_length)
         ]
 
-    # Compute cycle output table using stateful fatigue model
+    # Compute cycle output and stint time table using stateful fatigue model
     if use_stateful_fatigue:
-        cycle_output_table = compute_cycle_output_table(
-            cycle_pattern, stint_min,
+        cycle_stint_table = compute_cycle_stint_table(
+            cycle_pattern, stint_km, speed_kmh,
             work_rate=fatigue_work_rate,
-            tau_recovery=fatigue_tau_recovery
+            tau_recovery=fatigue_tau_recovery,
+            power_speed_exponent=power_speed_exponent
         )
+        cycle_output_table = cycle_stint_table['outputs']
+        cycle_stint_times = cycle_stint_table['stint_times']
+    else:
+        # Fallback: use estimated stint time
+        cycle_output_table = None
+        cycle_stint_times = None
 
-    # Exact race simulation stint-by-stint
-    # This handles fresh start, wrap-around, and partial cycles correctly
+    # Race simulation with distance-based stints and variable times
+    # n_stints is deterministic: ceil(distance_km / stint_km)
     stint_outputs = []
-    consecutive = {p: 0 for p in range(P)}  # Track consecutive from fresh start
-    # Track per-paddler stats for exact calculation
+    stint_times = []
+    consecutive = {p: 0 for p in range(P)}
     total_stints_paddled = {p: 0 for p in range(P)}
+    total_time_paddled = {p: 0.0 for p in range(P)}
     max_consecutive_streak = {p: 0 for p in range(P)}
+    current_stretch_time = {p: 0.0 for p in range(P)}  # Track actual time in current streak
+    longest_stretch_time = {p: 0.0 for p in range(P)}  # Track longest stretch time
+    fatigue_state = {p: 0.0 for p in range(P)}
 
-    for t in range(n_stints):
-        cycle_t = t % cycle_length
+    for stint_idx in range(n_stints):
+        cycle_t = stint_idx % cycle_length
 
-        # Determine who is paddling this stint (from the cycle pattern)
+        # Handle partial final stint
+        current_stint_km = stint_km
+        if stint_idx == n_stints - 1:
+            remaining = distance_km - stint_idx * stint_km
+            current_stint_km = min(stint_km, max(remaining, 0.001))
+
+        # Determine who is paddling this stint
         paddling_this_stint = {}
         for p in range(P):
             is_paddling = R[p, cycle_t].value() is not None and R[p, cycle_t].value() < 0.5
             paddling_this_stint[p] = is_paddling
 
-        # Update consecutive counts and per-paddler stats
+        # Compute stint time and output for paddling crew
+        if use_stateful_fatigue and cycle_stint_times is not None:
+            # Use precomputed cycle stint times (scaled for partial stint)
+            paddling_times = []
+            paddling_outputs = []
+            for p in range(P):
+                if paddling_this_stint[p]:
+                    # Scale precomputed time by distance ratio for partial stints
+                    base_time = cycle_stint_times[p][cycle_t]
+                    stint_time_p = base_time * (current_stint_km / stint_km)
+                    paddling_times.append(stint_time_p)
+                    paddling_outputs.append(cycle_output_table[p][cycle_t] * paddler_ability[p])
+
+            if paddling_times:
+                # Average stint time for crew (they move together)
+                avg_stint_time = np.mean(paddling_times)
+                avg_output = np.mean(paddling_outputs) / S * len(paddling_outputs)
+            else:
+                avg_stint_time = estimated_stint_min * (current_stint_km / stint_km)
+                avg_output = 0.0
+        else:
+            # Fallback: use simple simulation for each paddler
+            paddling_results = []
+            for p in range(P):
+                if paddling_this_stint[p]:
+                    result = compute_stint_time(
+                        current_stint_km, speed_kmh, fatigue_state[p],
+                        work_rate=fatigue_work_rate,
+                        power_speed_exponent=power_speed_exponent
+                    )
+                    paddling_results.append(result)
+
+            if paddling_results:
+                avg_stint_time = np.mean([r['stint_time_min'] for r in paddling_results])
+                avg_output = np.mean([r['avg_output'] for r in paddling_results])
+            else:
+                avg_stint_time = estimated_stint_min * (current_stint_km / stint_km)
+                avg_output = 0.0
+
+        stint_times.append(avg_stint_time)
+        stint_outputs.append(avg_output)
+
+        # Update consecutive counts, fatigue, and per-paddler stats
         for p in range(P):
             if paddling_this_stint[p]:
                 consecutive[p] += 1
                 total_stints_paddled[p] += 1
+                total_time_paddled[p] += avg_stint_time
+                current_stretch_time[p] += avg_stint_time  # Track actual stretch time
                 max_consecutive_streak[p] = max(max_consecutive_streak[p], consecutive[p])
+                longest_stretch_time[p] = max(longest_stretch_time[p], current_stretch_time[p])
+                # Update fatigue for paddling
+                fatigue_state[p] = update_fatigue(
+                    fatigue_state[p], avg_stint_time, 0,
+                    work_rate=fatigue_work_rate, tau_recovery=fatigue_tau_recovery
+                )
             else:
+                # Finalize current stretch before resetting
+                longest_stretch_time[p] = max(longest_stretch_time[p], current_stretch_time[p])
+                current_stretch_time[p] = 0.0  # Reset streak time
                 consecutive[p] = 0
+                # Update fatigue for resting
+                fatigue_state[p] = update_fatigue(
+                    fatigue_state[p], 0, avg_stint_time,
+                    work_rate=fatigue_work_rate, tau_recovery=fatigue_tau_recovery
+                )
 
-        # Calculate stint output for race time (uniform seat weights)
-        # seat_weights only affect optimization, not actual race physics
-        num = 0
-        for p in range(P):
-            if paddling_this_stint[p]:
-                if use_stateful_fatigue:
-                    # Use precomputed cycle output from stateful fatigue model
-                    num += cycle_output_table[p][cycle_t] * paddler_ability[p]
-                else:
-                    # Fallback: use consecutive-count-based output
-                    k = min(consecutive[p], max_consecutive)
-                    if k > 0:
-                        num += output_table[k] * paddler_ability[p]
-        stint_outputs.append(num / S)  # S seats with uniform weight 1.0
+    # Calculate race time from actual stint times
+    switches = n_stints - 1
+    race_time = sum(stint_times) + switches * (switch_time_secs / 60)
 
-    # Calculate race time from exact stint outputs
-    # Convert power outputs to speed using drag model
-    stint_speeds = [power_to_speed(p, power_speed_exponent) for p in stint_outputs]
-    avg_output = sum(stint_outputs) / n_stints  # Keep power for stats
-    avg_speed = sum(stint_speeds) / n_stints
+    # Calculate average output from actual stints
+    avg_output = sum(stint_outputs) / n_stints if stint_outputs else 0.0
+    avg_stint_time_min = sum(stint_times) / n_stints if stint_times else estimated_stint_min
 
     steady_cycle_output = sum(steady_stint_outputs)  # Keep for stats
-
-    nominal = distance_km / speed_kmh * 60
-    switches = n_stints - 1
-    race_time = nominal / avg_speed + switches * (switch_time_secs / 60)
 
     # Expand cycle to full race schedule
     full_sched = expand_cycle_to_race(cycle_sched, cycle_length, n_stints)
@@ -552,9 +666,9 @@ def solve_rotation_cycle(paddlers,
             'name': paddlers.name.iloc[p],
             'stints_paddled': total_stints_paddled[p],
             'stints_rested': n_stints - total_stints_paddled[p],
-            'total_time_min': float(total_stints_paddled[p] * stint_min),
+            'total_time_min': float(total_time_paddled[p]),
             'longest_stretch_stints': max_consecutive_streak[p],
-            'longest_stretch_min': float(max_consecutive_streak[p] * stint_min),
+            'longest_stretch_min': float(longest_stretch_time[p]),  # Use tracked time
             'stints_paddled_per_cycle': stints_per_cycle,
         })
 
@@ -572,20 +686,25 @@ def solve_rotation_cycle(paddlers,
     }
 
     # Compute trim statistics
-    if use_trim_penalty:
+    if use_trim_penalty or use_moi_penalty:
         trim_moments = []
+        moi_values = []
         for t in range(cycle_length):
-            # Calculate actual trim moment from solution
-            moment = sum(
-                (1 if X[p, s, t].value() and X[p, s, t].value() > 0.5 else 0)
-                * paddler_weight[p] * seat_positions[s]
-                for (p, s) in eligible_pairs
-            )
+            # Calculate actual trim moment and MOI from solution
+            moment = 0
+            moi = 0
+            for (p, s) in eligible_pairs:
+                if X[p, s, t].value() and X[p, s, t].value() > 0.5:
+                    moment += paddler_weight[p] * seat_positions[s]
+                    moi += paddler_weight[p] * (seat_positions[s] ** 2)
             trim_moments.append(moment)
+            moi_values.append(moi)
         trim_stats = {
             'trim_moments': trim_moments,
             'avg_abs_trim_moment': sum(abs(m) for m in trim_moments) / cycle_length,
             'max_abs_trim_moment': max(abs(m) for m in trim_moments),
+            'moi_values': moi_values,
+            'avg_moi': sum(moi_values) / cycle_length,
             'seat_positions': seat_positions,
         }
     else:
@@ -598,14 +717,17 @@ def solve_rotation_cycle(paddlers,
         "cycle_rules": format_cycle_rules(cycle_sched, paddlers),
         "avg_output": avg_output,
         "race_time": race_time,
+        "stint_times": stint_times,
         "parameters": {
-            "stint_min": stint_min,
+            "stint_km": stint_km,
             "n_stints": n_stints,
+            "avg_stint_time_min": avg_stint_time_min,
             "cycle_length": cycle_length,
             "seat_entry_weights": seat_entry_weights,
             "paddler_ability": paddler_ability,
             "paddler_weight": paddler_weight,
             "trim_penalty_weight": trim_penalty_weight,
+            "moi_penalty_weight": moi_penalty_weight,
             "trim_stats": trim_stats,
         },
         "paddler_summary": paddler_summary,

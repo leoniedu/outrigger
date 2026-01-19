@@ -49,7 +49,7 @@ paddlers = pd.DataFrame({
 })
 
 # Habilidade relativa de cada remador (1.0 = média)
-habilidade = [1.02, 1.0, 1, 1, 1, 1.02, .98, 1.01, 1.02]
+habilidade = [1.02, 1.0, 1, 1, 1, 1.02, 1, 1.01, 1.02]
 
 # Peso de cada remador (kg) - usado para cálculo de trim (balanco)
 peso = [73, 89, 78, 95, 95, 75, 75, 97, 78]
@@ -74,13 +74,13 @@ Cada remador só pode ocupar determinados bancos, baseado em sua experiência e 
 eligibility = np.array([
     [1, 1, 0, 0, 0, 0],  # Eduardo
     [1, 1, 0, 0, 0, 0],  # Guilherme
-    [0, 0, 0, 0, 1, 1],  # Vitor
-    [0, 0, 1, 1, 1, 0],  # Ricardo
+    [1, 1, 1, 1, 1, 1],  # Vitor
+    [0, 1, 1, 1, 1, 0],  # Ricardo
     [0, 0, 1, 1, 1, 0],  # Airton
-    [1, 1, 1, 1, 1, 1],  # Everson
+    [1, 1, 1, 1, 1, 0],  # Everson
     [0, 0, 0, 1, 1, 0],  # Sergio
-    [0, 0, 0, 1, 1, 1],  # Marcelo
-    [0, 0, 0, 0, 1, 1],  # Zé
+    [0, 0, 1, 1, 1, 1],  # Marcelo
+    [1, 1, 1, 1, 1, 1],  # Zé
 ])
 
 # Criar DataFrame para visualização
@@ -153,7 +153,7 @@ Para a equipe **Caveiras**, invertemos esse padrão:
 Os pesos refletem a preferência de entrada em cada banco (maior = preferido para entrada):
 
 ```{python}
-seat_entry_weights = [1, 4, 4, 4, 4, 1]
+seat_entry_weights = [1, 2, 1.5, 1.5, 2, 1]
 seat_names = ['Banco 1 (Voga)', 'Banco 2', 'Banco 3', 'Banco 4', 'Banco 5', 'Banco 6 (Leme)']
 
 pd.DataFrame({
@@ -174,13 +174,14 @@ Testamos durações de turno entre **10 e 20 minutos** para encontrar o tempo ó
 
 results = optimize_stint_range(
     paddlers,
-    stint_range=range(14, 15),
+    stint_km_range=[1,1.5,2],
     seat_eligibility=eligibility,
     seat_weights=[1.05, 1.02, 1.02, 1.01, 1.00, 1.10],
     seat_entry_weights=seat_entry_weights,
     paddler_ability=habilidade,
     paddler_weight=peso,
-    trim_penalty_weight=0.5,
+    trim_penalty_weight=0.75,
+    moi_penalty_weight=0.25,
     distance_km=DISTANCIA_KM,
     speed_kmh=VELOCIDADE_KMH,
     switch_time_secs=TEMPO_TROCA_SECS,
@@ -411,25 +412,29 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Análise de Trim (Balanço)
+## Análise de Trim e Concentração de Peso
 
-O modelo considera o balanço fore-aft (proa-popa) da canoa baseado no peso dos remadores.
-Momento de trim positivo = canoa pesada na popa. Momento de trim negativo = canoa pesada na proa.
+O modelo considera dois aspectos do balanço da canoa:
+
+- **Trim (momento)**: Balanço proa-popa. Positivo = pesada na popa, negativo = pesada na proa.
+- **MOI (inércia)**: Concentração de peso. Menor = peso no centro, maior = peso nas pontas.
 
 ```{python}
 #| label: tbl-trim
-#| tbl-cap: "Análise de trim por turno do ciclo"
+#| tbl-cap: "Análise de trim e MOI por turno do ciclo"
 
 trim_stats = results['best'].get('parameters', {}).get('trim_stats')
 if trim_stats:
     print(f"Momento de trim médio (absoluto): {trim_stats['avg_abs_trim_moment']:.1f} kg-m")
     print(f"Momento de trim máximo (absoluto): {trim_stats['max_abs_trim_moment']:.1f} kg-m")
-    print(f"\nMomentos por turno do ciclo:")
-    for t, m in enumerate(trim_stats['trim_moments']):
+    print(f"MOI médio: {trim_stats.get('avg_moi', 0):.1f} kg-m²")
+    print(f"\nPor turno do ciclo:")
+    moi_values = trim_stats.get('moi_values', [0] * len(trim_stats['trim_moments']))
+    for t, (m, moi) in enumerate(zip(trim_stats['trim_moments'], moi_values)):
         direcao = "popa" if m > 0 else "proa" if m < 0 else "neutro"
-        print(f"  Turno {t+1}: {m:+.1f} kg-m ({direcao})")
+        print(f"  Turno {t+1}: Trim={m:+.1f} kg-m ({direcao}), MOI={moi:.1f} kg-m²")
 else:
-    print("Trim não calculado (trim_penalty_weight = 0)")
+    print("Análise não disponível (trim_penalty_weight = 0 e moi_penalty_weight = 0)")
 ```
 
 ## Resumo
