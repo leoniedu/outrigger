@@ -1,2 +1,10 @@
-# Install the local outrigger_opt package (includes all dependencies)
-./python
+# Dependencies for Streamlit Cloud
+pulp>=2.8
+pandas>=2.0
+numpy>=1.23
+streamlit>=1.28
+openpyxl>=3.1.5
+matplotlib>=3.7
+
+# Install the local outrigger_opt package
+-e ./python
