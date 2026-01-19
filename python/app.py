@@ -45,10 +45,22 @@ TRANSLATIONS = {
         "time_limit": "Time Limit (seconds)",
         "gap_tolerance": "Gap Tolerance",
         "balance_penalties": "Balance Penalties",
+        "balance_explanation": """**Trim** measures fore-aft balance. Positive = stern-heavy, negative = bow-heavy. Keep close to zero.
+
+**MOI (Moment of Inertia)** measures weight distribution along the canoe's length. Low MOI = weight in the middle; High MOI = weight at the ends.
+
+| Condition | Preferred MOI |
+|-----------|---------------|
+| Downwind/runners | Low (more maneuverable) |
+| Flat water race | Low |
+| Rough crosswind/chop | High (more stable) |
+| Strong side swells | High |
+
+**Default:** Most races favor low MOI for responsiveness.""",
         "trim_penalty": "Trim Penalty Weight",
         "trim_penalty_help": "Penalty for fore-aft weight imbalance (0 = disabled)",
         "moi_penalty": "MOI Penalty Weight",
-        "moi_penalty_help": "Penalty for weight concentrated at ends (0 = disabled)",
+        "moi_penalty_help": "Penalty for weight concentrated at ends (0 = disabled, negative = prefer high MOI)",
         "crew_data": "Crew Data",
         "upload_csv": "Upload crew CSV (optional)",
         "upload_csv_help": "CSV with columns: name, ability, weight, seat1, seat2, ..., seat6",
@@ -159,10 +171,22 @@ TRANSLATIONS = {
         "time_limit": "Limite de Tempo (segundos)",
         "gap_tolerance": "Tolerância de Gap",
         "balance_penalties": "Penalidades de Equilíbrio",
+        "balance_explanation": """**Trim** mede o equilíbrio proa-popa. Positivo = peso na popa, negativo = peso na proa. Mantenha próximo de zero.
+
+**MOI (Momento de Inércia)** mede a distribuição de peso ao longo da canoa. MOI baixo = peso no centro; MOI alto = peso nas extremidades.
+
+| Condição | MOI Preferido |
+|----------|---------------|
+| Downwind/surfando ondas | Baixo (mais manobrável) |
+| Água calma | Baixo |
+| Mar agitado/ondas laterais | Alto (mais estável) |
+| Swell lateral forte | Alto |
+
+**Padrão:** A maioria das provas favorece MOI baixo para maior resposta ao leme.""",
         "trim_penalty": "Peso da Penalidade de Trim",
         "trim_penalty_help": "Penalidade para desequilíbrio proa-popa (0 = desativado)",
         "moi_penalty": "Peso da Penalidade de MOI",
-        "moi_penalty_help": "Penalidade para peso concentrado nas extremidades (0 = desativado)",
+        "moi_penalty_help": "Penalidade para peso nas extremidades (0 = desativado, negativo = preferir MOI alto)",
         "crew_data": "Dados da Tripulação",
         "upload_csv": "Carregar CSV da tripulação (opcional)",
         "upload_csv_help": "CSV com colunas: name, ability, weight, seat1, seat2, ..., seat6",
@@ -336,6 +360,7 @@ max_consecutive = st.sidebar.number_input(
 )
 
 with st.sidebar.expander(t("balance_penalties"), expanded=False):
+    st.markdown(t("balance_explanation"))
     trim_penalty_weight = st.number_input(
         t("trim_penalty"),
         min_value=0.0, max_value=2.0, value=0.75, step=0.05,
@@ -343,7 +368,7 @@ with st.sidebar.expander(t("balance_penalties"), expanded=False):
     )
     moi_penalty_weight = st.number_input(
         t("moi_penalty"),
-        min_value=0.0, max_value=2.0, value=0.25, step=0.05,
+        min_value=-1.0, max_value=2.0, value=0.25, step=0.05,
         help=t("moi_penalty_help")
     )
 
