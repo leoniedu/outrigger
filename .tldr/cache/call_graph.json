@@ -1,0 +1,177 @@
+{
+  "edges": [
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_cycle_stint_table",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "compute_stint_time"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_cycle_output_table",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "update_fatigue"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "expand_cycle_to_race"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_output_table",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "average_output"
+    },
+    {
+      "from_file": "python/example.py",
+      "from_func": "<module>",
+      "to_file": "python/example.py",
+      "to_func": "example_different_crew_size"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "average_output_stateful",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "output_power"
+    },
+    {
+      "from_file": "python/example.py",
+      "from_func": "<module>",
+      "to_file": "python/example.py",
+      "to_func": "example_basic"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_cycle_stint_table",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "update_fatigue"
+    },
+    {
+      "from_file": "python/app.py",
+      "from_func": "<module>",
+      "to_file": "python/app.py",
+      "to_func": "t"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_stint_time",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "power_to_speed"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "validate_eligibility"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_cycle_output_table",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "average_output_stateful"
+    },
+    {
+      "from_file": "python/app.py",
+      "from_func": "<module>",
+      "to_file": "python/outrigger_opt/meta.py",
+      "to_func": "optimize_stint_range"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "validate_params"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "compute_stint_time"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "validate_paddlers"
+    },
+    {
+      "from_file": "python/outrigger_opt/meta.py",
+      "from_func": "optimize_stint_range",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "solve_rotation_cycle"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "compute_cycle_stint_table"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "compute_stint_time",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "output_power"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "compute_output_table"
+    },
+    {
+      "from_file": "python/example.py",
+      "from_func": "<module>",
+      "to_file": "python/example.py",
+      "to_func": "example_paddler_ability"
+    },
+    {
+      "from_file": "python/outrigger_opt/fatigue.py",
+      "from_func": "average_output",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "output_curve"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/fatigue.py",
+      "to_func": "update_fatigue"
+    },
+    {
+      "from_file": "python/desafio60k2025.py",
+      "from_func": "<module>",
+      "to_file": "python/desafio60k2025.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "python/app.py",
+      "from_func": "<module>",
+      "to_file": "python/app.py",
+      "to_func": "load_crew_defaults"
+    },
+    {
+      "from_file": "python/outrigger_opt/model.py",
+      "from_func": "solve_rotation_cycle",
+      "to_file": "python/outrigger_opt/model.py",
+      "to_func": "format_cycle_rules"
+    },
+    {
+      "from_file": "python/example.py",
+      "from_func": "<module>",
+      "to_file": "python/example.py",
+      "to_func": "example_meta_optimization"
+    },
+    {
+      "from_file": "python/example.py",
+      "from_func": "<module>",
+      "to_file": "python/example.py",
+      "to_func": "example_custom_eligibility"
+    }
+  ],
+  "languages": [
+    "javascript",
+    "python"
+  ],
+  "timestamp": 1768834844.112363
+}

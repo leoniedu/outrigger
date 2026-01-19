@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tldr": {
+      "command": "tldr-mcp",
+      "args": ["--project", "."]
+    }
+  }
+}
