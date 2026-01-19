@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Outrigger Optimizer">
-<meta name="dcterms.date" content="2026-01-18">
+<meta name="dcterms.date" content="2026-01-19">
 
 <title>Desafio 60K 2025 - Otimização de Rotação</title>
 <style>
@@ -134,7 +134,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 18, 2026</p>
+      <p class="date">January 19, 2026</p>
     </div>
   </div>
   
@@ -157,7 +157,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="configuração-da-prova" class="level2">
 <h2 class="anchored" data-anchor-id="configuração-da-prova">Configuração da Prova</h2>
-<div id="664f78ee" class="cell" data-execution_count="1">
+<div id="adf1599a" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
@@ -174,7 +174,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="tripulação" class="level3">
 <h3 class="anchored" data-anchor-id="tripulação">Tripulação</h3>
 <p>A tripulação é composta por 9 remadores, onde 6 remam e 3 descansam a cada turno.</p>
-<div id="006a53bc" class="cell" data-execution_count="2">
+<div id="4c9a0846" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>paddlers <span class="op">=</span> pd.DataFrame({</span>
@@ -419,7 +419,7 @@ Table&nbsp;1: Matriz de Elegibilidade (1 = pode sentar, 0 = não pode)
 </figure>
 </div>
 </div>
-<div id="3668496c" class="cell" data-execution_count="4">
+<div id="68d2ab03" class="cell" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate average and std of eligible seat positions for each paddler</span></span>
@@ -494,7 +494,7 @@ Adaptação para Caveiras
 <section id="pesos-de-entrada-seat_entry_weights" class="level3">
 <h3 class="anchored" data-anchor-id="pesos-de-entrada-seat_entry_weights">Pesos de Entrada (<code>seat_entry_weights</code>)</h3>
 <p>Os pesos refletem a preferência de entrada em cada banco (maior = preferido para entrada):</p>
-<div id="6bdce00c" class="cell" data-execution_count="5">
+<div id="5d963332" class="cell" data-execution_count="5">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>seat_entry_weights <span class="op">=</span> [<span class="dv">1</span>, <span class="dv">2</span>, <span class="fl">1.5</span>, <span class="fl">1.5</span>, <span class="dv">2</span>, <span class="dv">1</span>]</span>
@@ -559,12 +559,12 @@ Adaptação para Caveiras
 <section id="otimização" class="level2">
 <h2 class="anchored" data-anchor-id="otimização">Otimização</h2>
 <p>Testamos durações de turno entre <strong>10 e 20 minutos</strong> para encontrar o tempo ótimo.</p>
-<div id="a53981f5" class="cell" data-execution_count="6">
+<div id="cb939f15" class="cell" data-execution_count="6">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> optimize_stint_range(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    paddlers,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_range<span class="op">=</span><span class="bu">range</span>(<span class="dv">10</span>, <span class="dv">20</span>),</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    stint_km_range<span class="op">=</span>[<span class="dv">1</span>,<span class="fl">1.5</span>,<span class="dv">2</span>],</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    seat_eligibility<span class="op">=</span>eligibility,</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    seat_weights<span class="op">=</span>[<span class="fl">1.05</span>, <span class="fl">1.02</span>, <span class="fl">1.02</span>, <span class="fl">1.01</span>, <span class="fl">1.00</span>, <span class="fl">1.10</span>],</span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    seat_entry_weights<span class="op">=</span>seat_entry_weights,</span>
@@ -586,37 +586,40 @@ Adaptação para Caveiras
 <div id="cell-fig-comparacao" class="cell" data-execution_count="7">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> results[<span class="st">'summary'</span>]</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> results[<span class="st">'summary'</span>].copy()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Add stint time in minutes for display</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>summary[<span class="st">'stint_min'</span>] <span class="op">=</span> summary[<span class="st">'stint_km'</span>] <span class="op">/</span> VELOCIDADE_KMH <span class="op">*</span> <span class="dv">60</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Gráfico principal</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>ax.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'race_time'</span>], <span class="st">'b-o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, markersize<span class="op">=</span><span class="dv">8</span>)</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Destacar o melhor</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>best_idx <span class="op">=</span> summary[<span class="st">'race_time'</span>].idxmin()</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>best_stint <span class="op">=</span> <span class="bu">int</span>(summary.loc[best_idx, <span class="st">'stint_min'</span>])</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>best_time <span class="op">=</span> summary.loc[best_idx, <span class="st">'race_time'</span>]</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>ax.scatter([best_stint], [best_time], color<span class="op">=</span><span class="st">'red'</span>, s<span class="op">=</span><span class="dv">200</span>, zorder<span class="op">=</span><span class="dv">5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint<span class="sc">}</span><span class="ss"> min'</span>)</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>ax.axhline(y<span class="op">=</span>best_time, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>ax.axvline(x<span class="op">=</span>best_stint, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'Duração do Turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">'Tempo Total de Prova (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Otimização da Duração do Turno'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ax.grid(<span class="va">True</span>, alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar anotação</span></span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>ax.annotate(<span class="ss">f'</span><span class="sc">{</span>best_time<span class="sc">:.1f}</span><span class="ss"> min</span><span class="ch">\n</span><span class="ss">(</span><span class="sc">{</span>best_time<span class="op">/</span><span class="dv">60</span><span class="sc">:.1f}</span><span class="ss"> horas)'</span>,</span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>            xy<span class="op">=</span>(best_stint, best_time),</span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>            xytext<span class="op">=</span>(best_stint <span class="op">+</span> <span class="dv">2</span>, best_time <span class="op">+</span> <span class="dv">3</span>),</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>            fontsize<span class="op">=</span><span class="dv">11</span>,</span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>            arrowprops<span class="op">=</span><span class="bu">dict</span>(arrowstyle<span class="op">=</span><span class="st">'-&gt;'</span>, color<span class="op">=</span><span class="st">'red'</span>))</span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Gráfico principal</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>ax.plot(summary[<span class="st">'stint_km'</span>], summary[<span class="st">'race_time'</span>], <span class="st">'b-o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, markersize<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Destacar o melhor</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>best_idx <span class="op">=</span> summary[<span class="st">'race_time'</span>].idxmin()</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>best_stint_km <span class="op">=</span> summary.loc[best_idx, <span class="st">'stint_km'</span>]</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>best_stint_min <span class="op">=</span> summary.loc[best_idx, <span class="st">'stint_min'</span>]</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>best_time <span class="op">=</span> summary.loc[best_idx, <span class="st">'race_time'</span>]</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>ax.scatter([best_stint_km], [best_time], color<span class="op">=</span><span class="st">'red'</span>, s<span class="op">=</span><span class="dv">200</span>, zorder<span class="op">=</span><span class="dv">5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint_km<span class="sc">:.1f}</span><span class="ss"> km'</span>)</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>ax.axhline(y<span class="op">=</span>best_time, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>ax.axvline(x<span class="op">=</span>best_stint_km, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'Distância do Turno (km)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">'Tempo Total de Prova (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Otimização da Distância do Turno'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>ax.grid(<span class="va">True</span>, alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Adicionar anotação</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>ax.annotate(<span class="ss">f'</span><span class="sc">{</span>best_time<span class="sc">:.1f}</span><span class="ss"> min</span><span class="ch">\n</span><span class="ss">(</span><span class="sc">{</span>best_time<span class="op">/</span><span class="dv">60</span><span class="sc">:.1f}</span><span class="ss"> horas)'</span>,</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>            xy<span class="op">=</span>(best_stint_km, best_time),</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>            xytext<span class="op">=</span>(best_stint_km <span class="op">+</span> <span class="fl">0.3</span>, best_time <span class="op">+</span> <span class="dv">3</span>),</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>            fontsize<span class="op">=</span><span class="dv">11</span>,</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>            arrowprops<span class="op">=</span><span class="bu">dict</span>(arrowstyle<span class="op">=</span><span class="st">'-&gt;'</span>, color<span class="op">=</span><span class="st">'red'</span>))</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="fig-comparacao" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -625,7 +628,7 @@ Adaptação para Caveiras
 <img src="desafio60k2025_files/figure-html/fig-comparacao-output-1.png" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-comparacao-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Tempo de prova vs.&nbsp;duração do turno
+Figure&nbsp;1: Tempo de prova vs.&nbsp;distância do turno
 </figcaption>
 </figure>
 </div>
@@ -637,21 +640,30 @@ Figure&nbsp;1: Tempo de prova vs.&nbsp;duração do turno
 <div class="cell" data-execution_count="8">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary.copy()</span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary[[<span class="st">'stint_km'</span>, <span class="st">'stint_min'</span>, <span class="st">'n_stints'</span>, <span class="st">'avg_output'</span>, <span class="st">'race_time'</span>]].copy()</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'race_time_hours'</span>] <span class="op">=</span> summary_display[<span class="st">'race_time'</span>] <span class="op">/</span> <span class="dv">60</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'speed'</span>] <span class="op">=</span> DISTANCIA_KM <span class="op">/</span> summary_display[<span class="st">'race_time_hours'</span>]</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>summary_display.columns <span class="op">=</span> [<span class="st">'Turno (min)'</span>, <span class="st">'Nº turnos'</span>, <span class="st">'Output Médio'</span>, <span class="st">'Tempo (min)'</span>, <span class="st">'Tempo (horas)'</span>, <span class="st">'Velocidade (km/h)'</span>]</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Output Médio'</span>] <span class="op">=</span> summary_display[<span class="st">'Output Médio'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1%}</span><span class="ss">'</span>)</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (horas)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (horas)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Velocidade (km/h)'</span>] <span class="op">=</span> summary_display[<span class="st">'Velocidade (km/h)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary_display.drop(columns<span class="op">=</span>[<span class="st">'Tempo (min)'</span>])</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>summary_display.set_index(<span class="st">'Turno (min)'</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>summary_display</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary_display.rename(columns<span class="op">=</span>{</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">'stint_km'</span>: <span class="st">'Turno (km)'</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">'stint_min'</span>: <span class="st">'Turno (min)'</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">'n_stints'</span>: <span class="st">'Nº turnos'</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">'avg_output'</span>: <span class="st">'Output Médio'</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">'race_time'</span>: <span class="st">'Tempo (min)'</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">'race_time_hours'</span>: <span class="st">'Tempo (horas)'</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">'speed'</span>: <span class="st">'Velocidade (km/h)'</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Turno (min)'</span>] <span class="op">=</span> summary_display[<span class="st">'Turno (min)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.0f}</span><span class="ss">'</span>)</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Output Médio'</span>] <span class="op">=</span> summary_display[<span class="st">'Output Médio'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.1%}</span><span class="ss">'</span>)</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Tempo (horas)'</span>] <span class="op">=</span> summary_display[<span class="st">'Tempo (horas)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>summary_display[<span class="st">'Velocidade (km/h)'</span>] <span class="op">=</span> summary_display[<span class="st">'Velocidade (km/h)'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: <span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.2f}</span><span class="ss">'</span>)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>summary_display <span class="op">=</span> summary_display.drop(columns<span class="op">=</span>[<span class="st">'Tempo (min)'</span>])</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>summary_display.set_index(<span class="st">'Turno (km)'</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>summary_display</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div id="tbl-resultados" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="8">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;2: Comparação de tempos por duração de turno
+Table&nbsp;2: Comparação de tempos por distância de turno
 </figcaption>
 <div aria-describedby="tbl-resultados-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output cell-output-display" data-execution_count="8">
@@ -662,13 +674,15 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Turno (min)</th>
 <th data-quarto-table-cell-role="th">Nº turnos</th>
 <th data-quarto-table-cell-role="th">Output Médio</th>
 <th data-quarto-table-cell-role="th">Tempo (horas)</th>
 <th data-quarto-table-cell-role="th">Velocidade (km/h)</th>
 </tr>
 <tr class="odd">
-<th data-quarto-table-cell-role="th">Turno (min)</th>
+<th data-quarto-table-cell-role="th">Turno (km)</th>
+<th data-quarto-table-cell-role="th"></th>
 <th data-quarto-table-cell-role="th"></th>
 <th data-quarto-table-cell-role="th"></th>
 <th data-quarto-table-cell-role="th"></th>
@@ -677,74 +691,28 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
-<td>41</td>
-<td>72.9%</td>
-<td>7.28</td>
-<td>8.24</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">11</td>
-<td>38</td>
-<td>72.5%</td>
-<td>7.38</td>
-<td>8.13</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">12</td>
-<td>35</td>
-<td>72.0%</td>
-<td>7.38</td>
-<td>8.13</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">13</td>
-<td>32</td>
-<td>71.4%</td>
-<td>7.28</td>
-<td>8.24</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14</td>
-<td>30</td>
-<td>70.7%</td>
-<td>7.32</td>
-<td>8.19</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">15</td>
-<td>28</td>
-<td>70.0%</td>
-<td>7.30</td>
-<td>8.22</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">16</td>
-<td>27</td>
-<td>69.2%</td>
+<td data-quarto-table-cell-role="th">1.0</td>
+<td>6</td>
+<td>60</td>
+<td>73.2%</td>
 <td>7.49</td>
 <td>8.01</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">17</td>
-<td>25</td>
-<td>68.3%</td>
-<td>7.35</td>
-<td>8.16</td>
+<td data-quarto-table-cell-role="th">1.5</td>
+<td>9</td>
+<td>40</td>
+<td>72.7%</td>
+<td>7.32</td>
+<td>8.19</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">18</td>
-<td>24</td>
-<td>67.4%</td>
-<td>7.46</td>
-<td>8.05</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">19</td>
-<td>23</td>
-<td>66.4%</td>
-<td>7.53</td>
-<td>7.97</td>
+<td data-quarto-table-cell-role="th">2.0</td>
+<td>12</td>
+<td>30</td>
+<td>70.9%</td>
+<td>7.28</td>
+<td>8.24</td>
 </tr>
 </tbody>
 </table>
@@ -764,19 +732,19 @@ Table&nbsp;2: Comparação de tempos por duração de turno
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fig, ax1 <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>color1 <span class="op">=</span> <span class="st">'tab:blue'</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>ax1.set_xlabel(<span class="st">'Duração do Turno (minutos)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>ax1.set_xlabel(<span class="st">'Distância do Turno (km)'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>ax1.set_ylabel(<span class="st">'Número de Trocas'</span>, color<span class="op">=</span>color1, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>ax1.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'n_stints'</span>] <span class="op">-</span> <span class="dv">1</span>, color<span class="op">=</span>color1, marker<span class="op">=</span><span class="st">'s'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Trocas'</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>ax1.plot(summary[<span class="st">'stint_km'</span>], summary[<span class="st">'n_stints'</span>] <span class="op">-</span> <span class="dv">1</span>, color<span class="op">=</span>color1, marker<span class="op">=</span><span class="st">'s'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Trocas'</span>)</span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>ax1.tick_params(axis<span class="op">=</span><span class="st">'y'</span>, labelcolor<span class="op">=</span>color1)</span>
 <span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>ax2 <span class="op">=</span> ax1.twinx()</span>
 <span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>color2 <span class="op">=</span> <span class="st">'tab:orange'</span></span>
 <span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>ax2.set_ylabel(<span class="st">'Output Médio (%)'</span>, color<span class="op">=</span>color2, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>ax2.plot(summary[<span class="st">'stint_min'</span>], summary[<span class="st">'avg_output'</span>] <span class="op">*</span> <span class="dv">100</span>, color<span class="op">=</span>color2, marker<span class="op">=</span><span class="st">'o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Output'</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>ax2.plot(summary[<span class="st">'stint_km'</span>], summary[<span class="st">'avg_output'</span>] <span class="op">*</span> <span class="dv">100</span>, color<span class="op">=</span>color2, marker<span class="op">=</span><span class="st">'o'</span>, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">'Output'</span>)</span>
 <span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>ax2.tick_params(axis<span class="op">=</span><span class="st">'y'</span>, labelcolor<span class="op">=</span>color2)</span>
 <span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Linha vertical no ótimo</span></span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>ax1.axvline(x<span class="op">=</span>best_stint, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint<span class="sc">}</span><span class="ss"> min'</span>)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>ax1.axvline(x<span class="op">=</span>best_stint_km, color<span class="op">=</span><span class="st">'red'</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>, label<span class="op">=</span><span class="ss">f'Ótimo: </span><span class="sc">{</span>best_stint_km<span class="sc">:.1f}</span><span class="ss"> km'</span>)</span>
 <span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">'Trade-off: Menos Trocas vs. Mais Fadiga'</span>, fontsize<span class="op">=</span><span class="dv">14</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
 <span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>fig.legend(loc<span class="op">=</span><span class="st">'upper center'</span>, bbox_to_anchor<span class="op">=</span>(<span class="fl">0.5</span>, <span class="fl">0.02</span>), ncol<span class="op">=</span><span class="dv">3</span>)</span>
@@ -811,14 +779,14 @@ Configuração Recomendada
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>Duração do turno: 10 minutos</strong></p>
-<p>Tempo estimado de prova: <strong>436.7 minutos</strong> (7.3 horas)</p>
+<p><strong>Distância do turno: 2.0 km</strong> (~12 minutos)</p>
+<p>Tempo estimado de prova: <strong>436.8 minutos</strong> (7.3 horas)</p>
 </div>
 </div>
 <section id="regras-de-rotação" class="level3">
 <h3 class="anchored" data-anchor-id="regras-de-rotação">Regras de Rotação</h3>
 <p>Cada remador segue um padrão simples de 3 turnos que se repete durante toda a prova:</p>
-<div id="37b78632" class="cell" data-execution_count="10">
+<div id="5d5d9683" class="cell" data-execution_count="10">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Ciclo de Rotação (repete a cada 3 turnos):</span><span class="ch">\n</span><span class="st">"</span>)</span>
@@ -831,8 +799,8 @@ Configuração Recomendada
   Eduardo      Banco 1* → Banco 1 → Descanso
   Guilherme    Banco 2 → Banco 2* → Descanso
   Vitor        Banco 5* → Banco 6 → Descanso
-  Ricardo      Banco 3* → Banco 4 → Descanso
-  Airton       Banco 5 → Banco 4* → Descanso
+  Ricardo      Banco 5 → Banco 4* → Descanso
+  Airton       Banco 3* → Banco 4 → Descanso
   Everson      Banco 2 → Banco 1 → Descanso*
   Sergio       Banco 5 → Banco 4 → Descanso*
   Marcelo      Banco 3 → Banco 3 → Descanso*
@@ -883,8 +851,8 @@ Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 <td data-quarto-table-cell-role="th">Turno 1</td>
 <td>Eduardo</td>
 <td>Guilherme</td>
-<td>Ricardo</td>
 <td>Airton</td>
+<td>Ricardo</td>
 <td>Vitor</td>
 <td>Zé</td>
 </tr>
@@ -893,7 +861,7 @@ Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 <td>Eduardo</td>
 <td>Everson</td>
 <td>Marcelo</td>
-<td>Ricardo</td>
+<td>Airton</td>
 <td>Sergio</td>
 <td>Vitor</td>
 </tr>
@@ -903,15 +871,15 @@ Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 <td>Guilherme</td>
 <td>Marcelo</td>
 <td>Sergio</td>
-<td>Airton</td>
+<td>Ricardo</td>
 <td>Zé</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">Turno 4</td>
 <td>Eduardo</td>
 <td>Guilherme</td>
-<td>Ricardo</td>
 <td>Airton</td>
+<td>Ricardo</td>
 <td>Vitor</td>
 <td>Zé</td>
 </tr>
@@ -920,7 +888,7 @@ Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 <td>Eduardo</td>
 <td>Everson</td>
 <td>Marcelo</td>
-<td>Ricardo</td>
+<td>Airton</td>
 <td>Sergio</td>
 <td>Vitor</td>
 </tr>
@@ -930,7 +898,7 @@ Table&nbsp;3: Ciclo de rotação (turnos 1-3 se repetem)
 <td>Guilherme</td>
 <td>Marcelo</td>
 <td>Sergio</td>
-<td>Airton</td>
+<td>Ricardo</td>
 <td>Zé</td>
 </tr>
 </tbody>
@@ -1145,7 +1113,7 @@ Por turno do ciclo:
 </section>
 <section id="resumo" class="level2">
 <h2 class="anchored" data-anchor-id="resumo">Resumo</h2>
-<div id="79612bcf" class="cell" data-execution_count="15">
+<div id="2aa7e722" class="cell" data-execution_count="15">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>n_stints <span class="op">=</span> results[<span class="st">'best'</span>][<span class="st">'n_stints'</span>]</span>
@@ -1175,20 +1143,20 @@ Por turno do ciclo:
 <td><strong>8.24 km/h</strong></td>
 </tr>
 <tr class="even">
-<td>Duração do turno</td>
-<td>10 min</td>
+<td>Distância do turno</td>
+<td>2.0 km (~12 min)</td>
 </tr>
 <tr class="odd">
 <td>Número de turnos</td>
-<td>41</td>
+<td>30</td>
 </tr>
 <tr class="even">
 <td>Número de trocas</td>
-<td>40</td>
+<td>29</td>
 </tr>
 <tr class="odd">
 <td>Subidas por remador</td>
-<td>13.7 (média)</td>
+<td>10.0 (média)</td>
 </tr>
 <tr class="even">
 <td>Tempo por troca</td>
@@ -1196,7 +1164,7 @@ Por turno do ciclo:
 </tr>
 <tr class="odd">
 <td><strong>Tempo total</strong></td>
-<td><strong>436.7 min</strong> (7.3 h)</td>
+<td><strong>436.8 min</strong> (7.3 h)</td>
 </tr>
 </tbody>
 </table>

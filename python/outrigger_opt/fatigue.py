@@ -110,7 +110,7 @@ def average_output_stateful(stint_min, fatigue_at_start, step=0.25,
 
 
 def compute_stint_time(stint_km, speed_kmh, fatigue_at_start,
-                       step_seconds=15, tau_warmup=2, work_rate=0.015,
+                       step_seconds=5, tau_warmup=2, work_rate=0.015,
                        power_speed_exponent=0.4):
     """
     Compute time to cover stint_km given fatigue state.
