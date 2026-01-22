@@ -64,26 +64,30 @@ def update_fatigue(fatigue, mins_worked, mins_rest, work_rate=0.015, tau_recover
     """
     Update fatigue based on exercise physiology W' balance model.
 
-    - Work: depletes W' (anaerobic work capacity) at work_rate per minute
+    - Work: depletes W' exponentially (remaining capacity decays)
     - Rest: W' recovers exponentially with half-life ~5 min (tau ~7 min)
 
-    Based on critical power research showing W' recovery half-time of ~5 minutes.
+    Both depletion and recovery use exponential models, ensuring fatigue
+    stays bounded in [0, 1] without artificial capping.
 
     Args:
         fatigue: current fatigue (0-1, represents fraction of W' depleted)
         mins_worked: minutes paddled in this stint
         mins_rest: minutes rested
-        work_rate: W' depletion per minute of work (default 0.015 = 15% per 10 min)
+        work_rate: W' depletion rate constant (default 0.015, tau_work ~67 min)
         tau_recovery: recovery time constant in minutes (default 7, half-life ~5 min)
 
     Returns:
-        updated fatigue value
+        updated fatigue value (always in [0, 1])
     """
-    # W' depletion during work
-    fatigue += work_rate * mins_worked
-    # W' recovery during rest (exponential with tau ~7 min)
-    fatigue *= np.exp(-mins_rest / tau_recovery)
-    return min(fatigue, 1.0)  # Cap at 100% depleted
+    # W' depletion during work: remaining capacity decays exponentially
+    # fatigue = 1 - remaining_capacity, so: fatigue = 1 - (1-fatigue)*exp(-rate*time)
+    if mins_worked > 0:
+        fatigue = 1 - (1 - fatigue) * np.exp(-work_rate * mins_worked)
+    # W' recovery during rest: fatigue decays exponentially toward 0
+    if mins_rest > 0:
+        fatigue *= np.exp(-mins_rest / tau_recovery)
+    return fatigue
 
 
 def average_output_stateful(stint_min, fatigue_at_start, step=0.25,
@@ -105,7 +109,8 @@ def average_output_stateful(stint_min, fatigue_at_start, step=0.25,
     fatigue = fatigue_at_start
     for minute in np.arange(0, stint_min, step):
         vals.append(output_power(minute, fatigue, tau_warmup))
-        fatigue += work_rate * step  # Accumulate fatigue during stint
+        # Exponential fatigue accumulation (bounded in [0,1])
+        fatigue = 1 - (1 - fatigue) * np.exp(-work_rate * step)
     return float(np.mean(vals)) if vals else 1.0
 
 
@@ -116,14 +121,15 @@ def compute_stint_time(stint_km, speed_kmh, fatigue_at_start,
     Compute time to cover stint_km given fatigue state.
 
     Iteratively simulates: power -> speed -> distance until target reached.
+    Uses exponential fatigue model ensuring fatigue stays bounded in [0,1].
 
     Args:
         stint_km: distance to cover in this stint (km)
         speed_kmh: base speed at power=1.0 (km/h)
         fatigue_at_start: fatigue level at start (0=fresh, 1=exhausted)
-        step_seconds: simulation time step in seconds (default 15)
+        step_seconds: simulation time step in seconds (default 5)
         tau_warmup: warmup time constant in minutes (default 2)
-        work_rate: W' depletion per minute of work (default 0.015)
+        work_rate: W' depletion rate constant (default 0.015)
         power_speed_exponent: exponent for power-to-speed (default 0.4)
 
     Returns:
@@ -144,12 +150,13 @@ def compute_stint_time(stint_km, speed_kmh, fatigue_at_start,
         # Advance by time step
         distance_covered += speed_kmh_actual * (step_min / 60.0)  # km
         time_elapsed_min += step_min
-        fatigue += work_rate * step_min
+        # Exponential fatigue accumulation (bounded in [0,1])
+        fatigue = 1 - (1 - fatigue) * np.exp(-work_rate * step_min)
 
     return {
         'stint_time_min': time_elapsed_min,
         'avg_output': float(np.mean(outputs)) if outputs else 1.0,
-        'fatigue_at_end': min(fatigue, 1.0)
+        'fatigue_at_end': fatigue
     }
 
 
