@@ -112,6 +112,13 @@ TRANSLATIONS = {
         "stern": "stern",
         "bow": "bow",
         "neutral": "neutral",
+        "seat_breakdown": "Seat Breakdown (Trim & MOI Calculation)",
+        "seat": "Seat",
+        "weight_kg": "Weight (kg)",
+        "position_m": "Position (m)",
+        "trim_contrib": "Trim (kg·m)",
+        "moi_contrib": "MOI (kg·m²)",
+        "total": "Total",
         "aggregate_stats": "Aggregate Stats",
         "metric": "Metric",
         "value": "Value",
@@ -244,6 +251,13 @@ TRANSLATIONS = {
         "stern": "popa",
         "bow": "proa",
         "neutral": "neutro",
+        "seat_breakdown": "Detalhamento por Banco (Cálculo Trim & MOI)",
+        "seat": "Banco",
+        "weight_kg": "Peso (kg)",
+        "position_m": "Posição (m)",
+        "trim_contrib": "Trim (kg·m)",
+        "moi_contrib": "MOI (kg·m²)",
+        "total": "Total",
         "aggregate_stats": "Estatísticas Agregadas",
         "metric": "Métrica",
         "value": "Valor",
@@ -885,6 +899,35 @@ if st.session_state.get('has_result', False):
             t('moi_kgm2'): [f"{m:.1f}" for m in trim_stats.get('moi_values', [0] * len(trim_stats['trim_moments']))]
         })
         st.dataframe(trim_data, use_container_width=True, hide_index=True)
+
+        # Seat breakdown table showing intermediate calculations
+        if 'seat_breakdown' in trim_stats:
+            with st.expander(t("seat_breakdown"), expanded=False):
+                for stint_idx, stint_seats in enumerate(trim_stats['seat_breakdown']):
+                    st.markdown(f"**{t('stint')} {stint_idx + 1}**")
+                    breakdown_rows = []
+                    for seat_data in stint_seats:
+                        breakdown_rows.append({
+                            t('seat'): seat_data['seat'],
+                            t('paddler'): seat_data['name'],
+                            t('weight_kg'): f"{seat_data['weight']:.1f}",
+                            t('position_m'): f"{seat_data['position']:+.1f}",
+                            t('trim_contrib'): f"{seat_data['trim_contrib']:+.1f}",
+                            t('moi_contrib'): f"{seat_data['moi_contrib']:.1f}",
+                        })
+                    # Add total row
+                    total_trim = sum(s['trim_contrib'] for s in stint_seats)
+                    total_moi = sum(s['moi_contrib'] for s in stint_seats)
+                    breakdown_rows.append({
+                        t('seat'): '',
+                        t('paddler'): f"**{t('total')}**",
+                        t('weight_kg'): '',
+                        t('position_m'): '',
+                        t('trim_contrib'): f"**{total_trim:+.1f}**",
+                        t('moi_contrib'): f"**{total_moi:.1f}**",
+                    })
+                    breakdown_df = pd.DataFrame(breakdown_rows)
+                    st.dataframe(breakdown_df, use_container_width=True, hide_index=True)
 
     # Stats columns (only in full mode)
     if result_mode == "full":

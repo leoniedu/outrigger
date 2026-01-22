@@ -735,20 +735,39 @@ def solve_rotation_cycle(paddlers,
             # Fall back to steady state outputs
             cycle_avg_outputs.append(steady_stint_outputs[t] if t < len(steady_stint_outputs) else 0.0)
 
-    # Compute trim statistics
+    # Compute trim statistics with per-seat breakdown
     if use_trim_penalty or use_trim_std_penalty or use_moi_penalty:
         trim_moments = []
         moi_values = []
+        seat_breakdown = []  # Per-stint breakdown of contributions by seat
+
         for t in range(cycle_length):
-            # Calculate actual trim moment and MOI from solution
+            # Calculate actual trim moment and MOI from solution with per-seat details
             moment = 0
             moi = 0
-            for (p, s) in eligible_pairs:
-                if X[p, s, t].value() and X[p, s, t].value() > 0.5:
-                    moment += paddler_weight[p] * seat_positions[s]
-                    moi += paddler_weight[p] * (seat_positions[s] ** 2)
+            stint_seats = []
+            for s in range(S):
+                # Find which paddler is in this seat
+                for p in range(P):
+                    if eligibility[p, s] and X[p, s, t].value() and X[p, s, t].value() > 0.5:
+                        weight = paddler_weight[p]
+                        position = seat_positions[s]
+                        trim_contrib = weight * position
+                        moi_contrib = weight * (position ** 2)
+                        moment += trim_contrib
+                        moi += moi_contrib
+                        stint_seats.append({
+                            'seat': s + 1,
+                            'name': paddlers.name.iloc[p],
+                            'weight': weight,
+                            'position': position,
+                            'trim_contrib': trim_contrib,
+                            'moi_contrib': moi_contrib,
+                        })
+                        break
             trim_moments.append(moment)
             moi_values.append(moi)
+            seat_breakdown.append(stint_seats)
 
         # Compute std dev of trim
         mean_trim = sum(trim_moments) / len(trim_moments)
@@ -766,6 +785,7 @@ def solve_rotation_cycle(paddlers,
             'avg_moi': sum(moi_values) / cycle_length,
             'seat_positions': seat_positions,
             'cycle_avg_outputs': cycle_avg_outputs,
+            'seat_breakdown': seat_breakdown,  # Per-seat contributions for each stint
             # Normalized values (comparable across crews)
             'avg_paddler_weight': avg_paddler_weight,
             'normalized_avg_abs_trim': sum(abs(m) for m in trim_moments) / cycle_length / (avg_paddler_weight * 2.5),
