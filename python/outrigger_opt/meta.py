@@ -15,6 +15,7 @@ def optimize_stint_range(paddlers,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
                          moi_penalty_weight=0.0,
+                         steerer_paddle_fraction=0.6,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
@@ -38,6 +39,7 @@ def optimize_stint_range(paddlers,
         paddler_weight: Optional list of weights per paddler (kg or relative)
         trim_penalty_weight: Penalty weight for max abs trim (default 0.0 = disabled)
         moi_penalty_weight: Penalty weight for weight concentration at ends (default 0.0 = disabled)
+        steerer_paddle_fraction: Fraction of time steerer paddles vs steers (default 0.6)
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
         solver_time_secs: Maximum solver computation time in seconds per stint distance
@@ -63,6 +65,7 @@ def optimize_stint_range(paddlers,
             paddler_weight=paddler_weight,
             trim_penalty_weight=trim_penalty_weight,
             moi_penalty_weight=moi_penalty_weight,
+            steerer_paddle_fraction=steerer_paddle_fraction,
             n_seats=n_seats,
             n_resting=n_resting,
             solver_time_secs=solver_time_secs,

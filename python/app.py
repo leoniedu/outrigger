@@ -61,6 +61,8 @@ TRANSLATIONS = {
         "trim_penalty_help": "Minimize worst-case trim imbalance (0 = disabled)",
         "moi_penalty": "MOI Penalty",
         "moi_penalty_help": "Penalize weight at ends (0 = disabled, negative = prefer ends)",
+        "steerer_paddle_fraction": "Steerer Paddle %",
+        "steerer_paddle_fraction_help": "Fraction of time steerer paddles vs steers. 70-80% flat, 50-60% moderate, 30-40% rough water. Affects output and dead weight penalty.",
         "normalized": "Normalized",
         "crew_data": "Crew Data",
         "upload_csv": "Upload crew CSV (optional)",
@@ -196,6 +198,8 @@ TRANSLATIONS = {
         "trim_penalty_help": "Minimizar pior caso de desequilíbrio (0 = desativado)",
         "moi_penalty": "Penalidade de MOI",
         "moi_penalty_help": "Penalizar peso nas extremidades (0 = desativado, negativo = preferir extremidades)",
+        "steerer_paddle_fraction": "% Remada do Leme",
+        "steerer_paddle_fraction_help": "Fração do tempo que o leme rema vs governa. 70-80% água calma, 50-60% moderado, 30-40% mar agitado. Afeta contribuição e peso morto.",
         "normalized": "Normalizado",
         "crew_data": "Dados da Tripulação",
         "upload_csv": "Carregar CSV da tripulação (opcional)",
@@ -388,6 +392,11 @@ with st.sidebar.expander(t("balance_penalties"), expanded=False):
         t("moi_penalty"),
         min_value=-1.0, max_value=2.0, value=0.25, step=0.05,
         help=t("moi_penalty_help")
+    )
+    steerer_paddle_fraction = st.number_input(
+        t("steerer_paddle_fraction"),
+        min_value=0.2, max_value=1.0, value=0.6, step=0.05,
+        help=t("steerer_paddle_fraction_help")
     )
 
 # --- Race Simulation Parameters (only in full mode) ---
@@ -650,6 +659,7 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
+                        steerer_paddle_fraction=steerer_paddle_fraction,
                         n_seats=n_seats,
                         n_resting=n_resting,
                         solver_time_secs=time_limit,
@@ -672,6 +682,7 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
+                        steerer_paddle_fraction=steerer_paddle_fraction,
                         n_seats=n_seats,
                         n_resting=n_resting,
                         solver_time_secs=time_limit,
@@ -698,6 +709,7 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
+                        steerer_paddle_fraction=steerer_paddle_fraction,
                         n_seats=n_seats,
                         n_resting=n_resting,
                         solver_time_secs=time_limit,

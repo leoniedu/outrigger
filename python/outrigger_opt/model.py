@@ -173,6 +173,7 @@ def solve_rotation_cycle(paddlers,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
                          moi_penalty_weight=0.0,
+                         steerer_paddle_fraction=0.6,
                          n_seats=6,
                          n_resting=3,
                          solver_time_secs=60,
@@ -217,6 +218,9 @@ def solve_rotation_cycle(paddlers,
                             Uses minimax: minimizes the worst-case trim imbalance across stints.
         moi_penalty_weight: Penalty weight for moment of inertia (default 0.0 = disabled).
                            Positive = prefer weight in middle, negative = prefer weight at ends.
+        steerer_paddle_fraction: Fraction of time steerer (seat 6) paddles vs steers (default 0.6).
+                                Affects seat 6 output contribution and dead weight penalty.
+                                0.7-0.8 for flat/sprint, 0.5-0.6 moderate, 0.3-0.4 rough water.
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
         solver_time_secs: Maximum solver computation time in seconds (default 60)
@@ -258,7 +262,11 @@ def solve_rotation_cycle(paddlers,
         eligibility = np.asarray(seat_eligibility)
     validate_eligibility(eligibility, P, S)
 
-    # Default seat weights
+    # Validate steerer_paddle_fraction
+    if not 0.0 <= steerer_paddle_fraction <= 1.0:
+        raise ValueError(f"steerer_paddle_fraction must be between 0 and 1, got {steerer_paddle_fraction}")
+
+    # Default seat weights (before steerer adjustment)
     if seat_weights is None:
         if S == 6:
             seat_weights = [1.2, 1.1, 0.9, 0.9, 0.9, 1.1]
@@ -267,6 +275,12 @@ def solve_rotation_cycle(paddlers,
 
     if len(seat_weights) != S:
         raise ValueError(f"seat_weights must have {S} elements, got {len(seat_weights)}")
+
+    # Adjust steerer (seat 6 / last seat) weight by paddle fraction
+    # Steerer only contributes to output when paddling, not when steering
+    seat_weights = list(seat_weights)  # Make mutable copy
+    steerer_seat = S - 1  # Last seat (index S-1)
+    seat_weights[steerer_seat] *= steerer_paddle_fraction
 
     # Default seat entry weights (all 1.0 = normal difficulty)
     if seat_entry_weights is None:
@@ -518,6 +532,23 @@ def solve_rotation_cycle(paddlers,
         # Total MOI across all stints in cycle (lower = weight concentrated in middle)
         moi_penalty = moi_scale * lpSum(MOI[t] for t in range(cycle_length))
         objective = objective - moi_penalty
+
+    # Dead weight penalty for steerer (seat 6)
+    # When steering (not paddling), the steerer's weight is pure drag without power contribution
+    # Penalize heavier steerers proportional to: weight × (1 - paddle_fraction)
+    if steerer_paddle_fraction < 1.0:
+        # Eligible paddlers for steerer seat
+        steerer_eligible = [p for p in range(P) if eligibility[p, steerer_seat]]
+        # Dead weight contribution for each paddler if they're the steerer
+        # Normalized by avg_paddler_weight so penalty is in comparable units
+        dead_weight_penalty = lpSum(
+            X[p, steerer_seat, t] * (paddler_weight[p] / avg_paddler_weight - 1.0) * (1.0 - steerer_paddle_fraction)
+            for p in steerer_eligible
+            for t in range(cycle_length)
+        )
+        # Scale relative to output (light steerer saves ~5-10% of output value)
+        dead_weight_scale = 0.1 * sum(seat_weights) / cycle_length
+        objective = objective - dead_weight_scale * dead_weight_penalty
 
     prob += objective
 
@@ -784,6 +815,7 @@ def solve_rotation_cycle(paddlers,
             "paddler_weight": paddler_weight,
             "trim_penalty_weight": trim_penalty_weight,
             "moi_penalty_weight": moi_penalty_weight,
+            "steerer_paddle_fraction": steerer_paddle_fraction,
             "trim_stats": trim_stats,
         },
         "paddler_summary": paddler_summary,
