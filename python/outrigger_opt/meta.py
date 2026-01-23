@@ -14,7 +14,6 @@ def optimize_stint_range(paddlers,
                          paddler_ability=None,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
-                         trim_std_penalty_weight=0.0,
                          moi_penalty_weight=0.0,
                          n_seats=6,
                          n_resting=3,
@@ -37,8 +36,7 @@ def optimize_stint_range(paddlers,
         seat_entry_weights: Optional list of entry ease weights per seat
         paddler_ability: Optional list of ability multipliers per paddler
         paddler_weight: Optional list of weights per paddler (kg or relative)
-        trim_penalty_weight: Penalty weight for avg abs trim (default 0.0 = disabled)
-        trim_std_penalty_weight: Penalty weight for trim consistency (default 0.0 = disabled)
+        trim_penalty_weight: Penalty weight for max abs trim (default 0.0 = disabled)
         moi_penalty_weight: Penalty weight for weight concentration at ends (default 0.0 = disabled)
         n_seats: Number of seats in canoe (default 6)
         n_resting: Number of paddlers resting each stint (default 3)
@@ -64,7 +62,6 @@ def optimize_stint_range(paddlers,
             paddler_ability=paddler_ability,
             paddler_weight=paddler_weight,
             trim_penalty_weight=trim_penalty_weight,
-            trim_std_penalty_weight=trim_std_penalty_weight,
             moi_penalty_weight=moi_penalty_weight,
             n_seats=n_seats,
             n_resting=n_resting,

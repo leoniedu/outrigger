@@ -172,7 +172,6 @@ def solve_rotation_cycle(paddlers,
                          paddler_ability=None,
                          paddler_weight=None,
                          trim_penalty_weight=0.0,
-                         trim_std_penalty_weight=0.0,
                          moi_penalty_weight=0.0,
                          n_seats=6,
                          n_resting=3,
@@ -214,10 +213,8 @@ def solve_rotation_cycle(paddlers,
                         >1 = stronger paddler, <1 = weaker paddler.
         paddler_weight: Optional list of weights per paddler (kg or relative). Default all 75.0.
                        Used for trim (fore-aft balance) calculation.
-        trim_penalty_weight: Penalty weight for avg abs trim (default 0.0 = disabled).
-                            Penalizes deviation from neutral fore-aft balance.
-        trim_std_penalty_weight: Penalty weight for trim std dev (default 0.0 = disabled).
-                                Penalizes variation in trim across stints.
+        trim_penalty_weight: Penalty weight for max abs trim (default 0.0 = disabled).
+                            Uses minimax: minimizes the worst-case trim imbalance across stints.
         moi_penalty_weight: Penalty weight for moment of inertia (default 0.0 = disabled).
                            Positive = prefer weight in middle, negative = prefer weight at ends.
         n_seats: Number of seats in canoe (default 6)
@@ -300,7 +297,6 @@ def solve_rotation_cycle(paddlers,
 
     # Validate penalty weights
     use_trim_penalty = trim_penalty_weight != 0
-    use_trim_std_penalty = trim_std_penalty_weight != 0
     use_moi_penalty = moi_penalty_weight != 0
 
     # Compute average paddler weight for normalization (makes penalties comparable across crews)
@@ -346,25 +342,21 @@ def solve_rotation_cycle(paddlers,
         Entry = {(p, s, t): LpVariable(f"Entry_{p}_{s}_{t}", cat="Binary")
                  for (p, s) in eligible_pairs for t in range(cycle_length)}
 
-    # Trim penalty variables (for absolute value linearization)
-    if use_trim_penalty or use_trim_std_penalty:
+    # Trim penalty variables (for absolute value linearization and minimax)
+    if use_trim_penalty:
         # Calculate max possible trim moment for variable bounds
         max_paddler_weight = max(paddler_weight)
         max_seat_pos = max(abs(p) for p in seat_positions)
         max_trim_moment = S * max_paddler_weight * max_seat_pos
 
-        # TrimPos - TrimNeg = trim_moment, minimize TrimPos + TrimNeg = |trim_moment|
+        # TrimPos - TrimNeg = trim_moment, TrimPos + TrimNeg = |trim_moment|
         TrimPos = {t: LpVariable(f"TrimPos_{t}", lowBound=0, upBound=max_trim_moment, cat="Continuous")
                    for t in range(cycle_length)}
         TrimNeg = {t: LpVariable(f"TrimNeg_{t}", lowBound=0, upBound=max_trim_moment, cat="Continuous")
                    for t in range(cycle_length)}
 
-    # Trim range variables for std penalty (minimize range as proxy for consistency)
-    if use_trim_std_penalty:
-        # TrimMax >= trim[t] for all t, TrimMin <= trim[t] for all t
-        # Range = TrimMax - TrimMin
-        TrimMax = LpVariable("TrimMax", lowBound=-max_trim_moment, upBound=max_trim_moment, cat="Continuous")
-        TrimMin = LpVariable("TrimMin", lowBound=-max_trim_moment, upBound=max_trim_moment, cat="Continuous")
+        # MaxAbsTrim for minimax formulation: minimize the worst-case trim
+        MaxAbsTrim = LpVariable("MaxAbsTrim", lowBound=0, upBound=max_trim_moment, cat="Continuous")
 
     # MOI (moment of inertia) variables for weight concentration penalty
     if use_moi_penalty:
@@ -438,8 +430,8 @@ def solve_rotation_cycle(paddlers,
                 prob += Entry[p, s, t] <= X[p, s, t]
                 prob += Entry[p, s, t] <= R[p, t-1]
 
-    # Trim balance constraints (absolute value linearization)
-    if use_trim_penalty or use_trim_std_penalty:
+    # Trim balance constraints (absolute value linearization + minimax)
+    if use_trim_penalty:
         for t in range(cycle_length):
             # Calculate trim moment as linear expression
             # Positive moment = stern-heavy, negative moment = bow-heavy
@@ -450,10 +442,8 @@ def solve_rotation_cycle(paddlers,
             # TrimPos - TrimNeg = trim_moment (for absolute value)
             prob += TrimPos[t] - TrimNeg[t] == trim_moment, f"Trim_balance_{t}"
 
-            # Range constraints for trim consistency
-            if use_trim_std_penalty:
-                prob += TrimMax >= trim_moment, f"TrimMax_{t}"
-                prob += TrimMin <= trim_moment, f"TrimMin_{t}"
+            # Minimax constraint: MaxAbsTrim >= |trim_moment| for all stints
+            prob += MaxAbsTrim >= TrimPos[t] + TrimNeg[t], f"MaxAbsTrim_{t}"
 
     # MOI constraints (weight concentration - lower = better)
     if use_moi_penalty:
@@ -512,22 +502,15 @@ def solve_rotation_cycle(paddlers,
     # Normalization factors scaled by avg paddler weight (makes penalties comparable across crews)
     # Position factors based on typical OC6 geometry
     trim_normalizer = avg_paddler_weight * 2.5  # ~max seat position (m)
-    trim_std_normalizer = avg_paddler_weight * 2.0  # range is typically smaller
     sum_pos_sq = sum(p**2 for p in seat_positions)  # e.g., 17.5 for 6-seat
     moi_normalizer = avg_paddler_weight * sum_pos_sq  # total MOI if all avg weight
 
     if use_trim_penalty:
-        # Normalize by avg_weight × position_factor, scale by seat_weights
+        # Using minimax: penalize the worst (maximum) absolute trim across all stints
+        # Normalize by avg_weight × max_seat_position
         trim_scale = trim_penalty_weight / (trim_normalizer * sum(seat_weights) / cycle_length)
-        # Total absolute trim across all stints in cycle
-        trim_penalty = trim_scale * lpSum(TrimPos[t] + TrimNeg[t] for t in range(cycle_length))
+        trim_penalty = trim_scale * MaxAbsTrim * cycle_length
         objective = objective - trim_penalty
-
-    if use_trim_std_penalty:
-        # Penalize trim range (max - min) as proxy for consistency/std dev
-        trim_std_scale = trim_std_penalty_weight / (trim_std_normalizer * sum(seat_weights) / cycle_length)
-        trim_range_penalty = trim_std_scale * (TrimMax - TrimMin)
-        objective = objective - trim_range_penalty
 
     if use_moi_penalty:
         # Normalize by avg_weight × sum(position²) / n_seats
@@ -735,65 +718,53 @@ def solve_rotation_cycle(paddlers,
             # Fall back to steady state outputs
             cycle_avg_outputs.append(steady_stint_outputs[t] if t < len(steady_stint_outputs) else 0.0)
 
-    # Compute trim statistics with per-seat breakdown
-    if use_trim_penalty or use_trim_std_penalty or use_moi_penalty:
-        trim_moments = []
-        moi_values = []
-        seat_breakdown = []  # Per-stint breakdown of contributions by seat
+    # Compute trim and MOI statistics with per-seat breakdown (always, for transparency)
+    trim_moments = []
+    moi_values = []
+    seat_breakdown = []  # Per-stint breakdown of contributions by seat
 
-        for t in range(cycle_length):
-            # Calculate actual trim moment and MOI from solution with per-seat details
-            moment = 0
-            moi = 0
-            stint_seats = []
-            for s in range(S):
-                # Find which paddler is in this seat
-                for p in range(P):
-                    if eligibility[p, s] and X[p, s, t].value() and X[p, s, t].value() > 0.5:
-                        weight = paddler_weight[p]
-                        position = seat_positions[s]
-                        trim_contrib = weight * position
-                        moi_contrib = weight * (position ** 2)
-                        moment += trim_contrib
-                        moi += moi_contrib
-                        stint_seats.append({
-                            'seat': s + 1,
-                            'name': paddlers.name.iloc[p],
-                            'weight': weight,
-                            'position': position,
-                            'trim_contrib': trim_contrib,
-                            'moi_contrib': moi_contrib,
-                        })
-                        break
-            trim_moments.append(moment)
-            moi_values.append(moi)
-            seat_breakdown.append(stint_seats)
+    for t in range(cycle_length):
+        # Calculate actual trim moment and MOI from solution with per-seat details
+        moment = 0
+        moi = 0
+        stint_seats = []
+        for s in range(S):
+            # Find which paddler is in this seat
+            for p in range(P):
+                if eligibility[p, s] and X[p, s, t].value() and X[p, s, t].value() > 0.5:
+                    weight = paddler_weight[p]
+                    position = seat_positions[s]
+                    trim_contrib = weight * position
+                    moi_contrib = weight * (position ** 2)
+                    moment += trim_contrib
+                    moi += moi_contrib
+                    stint_seats.append({
+                        'seat': s + 1,
+                        'name': paddlers.name.iloc[p],
+                        'weight': weight,
+                        'position': position,
+                        'trim_contrib': trim_contrib,
+                        'moi_contrib': moi_contrib,
+                    })
+                    break
+        trim_moments.append(moment)
+        moi_values.append(moi)
+        seat_breakdown.append(stint_seats)
 
-        # Compute std dev of trim
-        mean_trim = sum(trim_moments) / len(trim_moments)
-        std_trim = (sum((m - mean_trim) ** 2 for m in trim_moments) / len(trim_moments)) ** 0.5
-        trim_range = max(trim_moments) - min(trim_moments)
-
-        # Normalized values (for comparison across crews)
-        trim_stats = {
-            'trim_moments': trim_moments,
-            'avg_abs_trim_moment': sum(abs(m) for m in trim_moments) / cycle_length,
-            'max_abs_trim_moment': max(abs(m) for m in trim_moments),
-            'std_trim_moment': std_trim,
-            'trim_range': trim_range,
-            'moi_values': moi_values,
-            'avg_moi': sum(moi_values) / cycle_length,
-            'seat_positions': seat_positions,
-            'cycle_avg_outputs': cycle_avg_outputs,
-            'seat_breakdown': seat_breakdown,  # Per-seat contributions for each stint
-            # Normalized values (comparable across crews)
-            'avg_paddler_weight': avg_paddler_weight,
-            'normalized_avg_abs_trim': sum(abs(m) for m in trim_moments) / cycle_length / (avg_paddler_weight * 2.5),
-            'normalized_std_trim': std_trim / (avg_paddler_weight * 2.0),
-            'normalized_avg_moi': sum(moi_values) / cycle_length / (avg_paddler_weight * sum_pos_sq),
-        }
-    else:
-        trim_stats = None
+    # Trim/MOI statistics
+    trim_stats = {
+        'trim_moments': trim_moments,
+        'max_abs_trim_moment': max(abs(m) for m in trim_moments),
+        'moi_values': moi_values,
+        'avg_moi': sum(moi_values) / cycle_length,
+        'seat_positions': seat_positions,
+        'cycle_avg_outputs': cycle_avg_outputs,
+        'seat_breakdown': seat_breakdown,  # Per-seat contributions for each stint
+        # Normalized values (comparable across crews)
+        'avg_paddler_weight': avg_paddler_weight,
+        'normalized_max_abs_trim': max(abs(m) for m in trim_moments) / (avg_paddler_weight * 2.5),
+        'normalized_avg_moi': sum(moi_values) / cycle_length / (avg_paddler_weight * sum_pos_sq),
+    }
 
     return {
         "status": LpStatus[prob.status],
@@ -812,7 +783,6 @@ def solve_rotation_cycle(paddlers,
             "paddler_ability": paddler_ability,
             "paddler_weight": paddler_weight,
             "trim_penalty_weight": trim_penalty_weight,
-            "trim_std_penalty_weight": trim_std_penalty_weight,
             "moi_penalty_weight": moi_penalty_weight,
             "trim_stats": trim_stats,
         },

@@ -58,13 +58,9 @@ TRANSLATIONS = {
 
 **Default:** Most races favor low MOI for responsiveness.""",
         "trim_penalty": "Trim Penalty",
-        "trim_penalty_help": "Penalize deviation from neutral trim (0 = disabled)",
-        "trim_std_penalty": "Trim Consistency",
-        "trim_std_penalty_help": "Penalize variation in trim across stints (0 = disabled)",
+        "trim_penalty_help": "Minimize worst-case trim imbalance (0 = disabled)",
         "moi_penalty": "MOI Penalty",
         "moi_penalty_help": "Penalize weight at ends (0 = disabled, negative = prefer ends)",
-        "std_trim": "Std Dev Trim",
-        "trim_range": "Trim Range",
         "normalized": "Normalized",
         "crew_data": "Crew Data",
         "upload_csv": "Upload crew CSV (optional)",
@@ -197,13 +193,9 @@ TRANSLATIONS = {
 
 **Padrão:** A maioria das provas favorece MOI baixo para maior resposta ao leme.""",
         "trim_penalty": "Penalidade de Trim",
-        "trim_penalty_help": "Penalizar desvio do trim neutro (0 = desativado)",
-        "trim_std_penalty": "Consistência do Trim",
-        "trim_std_penalty_help": "Penalizar variação do trim entre turnos (0 = desativado)",
+        "trim_penalty_help": "Minimizar pior caso de desequilíbrio (0 = desativado)",
         "moi_penalty": "Penalidade de MOI",
         "moi_penalty_help": "Penalizar peso nas extremidades (0 = desativado, negativo = preferir extremidades)",
-        "std_trim": "Desvio Padrão Trim",
-        "trim_range": "Amplitude do Trim",
         "normalized": "Normalizado",
         "crew_data": "Dados da Tripulação",
         "upload_csv": "Carregar CSV da tripulação (opcional)",
@@ -391,11 +383,6 @@ with st.sidebar.expander(t("balance_penalties"), expanded=False):
         t("trim_penalty"),
         min_value=0.0, max_value=2.0, value=0.5, step=0.05,
         help=t("trim_penalty_help")
-    )
-    trim_std_penalty_weight = st.number_input(
-        t("trim_std_penalty"),
-        min_value=0.0, max_value=2.0, value=0.25, step=0.05,
-        help=t("trim_std_penalty_help")
     )
     moi_penalty_weight = st.number_input(
         t("moi_penalty"),
@@ -662,7 +649,6 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_ability=paddler_ability,
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
-                        trim_std_penalty_weight=trim_std_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
                         n_seats=n_seats,
                         n_resting=n_resting,
@@ -685,7 +671,6 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_ability=paddler_ability,
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
-                        trim_std_penalty_weight=trim_std_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
                         n_seats=n_seats,
                         n_resting=n_resting,
@@ -712,7 +697,6 @@ if st.button(t("run_optimization"), type="primary", use_container_width=True):
                         paddler_ability=paddler_ability,
                         paddler_weight=paddler_weight,
                         trim_penalty_weight=trim_penalty_weight,
-                        trim_std_penalty_weight=trim_std_penalty_weight,
                         moi_penalty_weight=moi_penalty_weight,
                         n_seats=n_seats,
                         n_resting=n_resting,
@@ -869,24 +853,19 @@ if st.session_state.get('has_result', False):
     else:
         st.dataframe(paddler_summary, use_container_width=True, hide_index=True)
 
-    # Trim stats
+    # Trim stats (always shown for transparency)
     trim_stats = result['parameters'].get('trim_stats')
     if trim_stats:
         st.subheader(t("balance_analysis"))
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
-            st.metric(t("avg_trim"), f"{trim_stats['avg_abs_trim_moment']:.1f} kg-m")
             st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
         with col2:
-            st.metric(t("std_trim"), f"{trim_stats.get('std_trim_moment', 0):.1f} kg-m")
-            st.metric(t("trim_range"), f"{trim_stats.get('trim_range', 0):.1f} kg-m")
-        with col3:
             st.metric(t("avg_moi"), f"{trim_stats.get('avg_moi', 0):.1f} kg-m²")
 
         # Show normalized values for comparison across crews
-        if 'normalized_avg_abs_trim' in trim_stats:
-            st.caption(f"{t('normalized')}: Trim={trim_stats['normalized_avg_abs_trim']:.2f}, "
-                      f"Std={trim_stats['normalized_std_trim']:.2f}, "
+        if 'normalized_max_abs_trim' in trim_stats:
+            st.caption(f"{t('normalized')}: Trim={trim_stats['normalized_max_abs_trim']:.2f}, "
                       f"MOI={trim_stats['normalized_avg_moi']:.2f}")
 
         st.markdown(f"**{t('cycle_stint_details')}**")
