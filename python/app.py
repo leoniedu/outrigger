@@ -10,6 +10,150 @@ from pathlib import Path
 from outrigger_opt import solve_rotation_cycle
 from outrigger_opt.meta import optimize_stint_range
 
+
+def analyze_manual_schedule(schedule_df, paddler_weights, n_seats):
+    """Analyze a manually entered schedule for trim and MOI.
+
+    Args:
+        schedule_df: DataFrame with columns for each seat, rows for each stint.
+                    Cell values are paddler names.
+        paddler_weights: Dict mapping paddler name to weight in kg.
+        n_seats: Number of seats.
+
+    Returns:
+        dict with trim_stats similar to solver output.
+    """
+    # Seat positions (meters from center, negative = bow)
+    seat_positions = [-(n_seats-1)/2 + i for i in range(n_seats)]
+    sum_pos_sq = sum(p**2 for p in seat_positions)
+    avg_paddler_weight = sum(paddler_weights.values()) / len(paddler_weights)
+
+    cycle_length = len(schedule_df)
+    trim_moments = []
+    moi_values = []
+    seat_breakdown = []
+
+    for stint_idx in range(cycle_length):
+        stint_trim = 0.0
+        stint_moi = 0.0
+        stint_seats = []
+
+        for seat_idx in range(n_seats):
+            col_name = schedule_df.columns[seat_idx]
+            paddler_name = schedule_df.iloc[stint_idx, seat_idx]
+            weight = paddler_weights.get(paddler_name, avg_paddler_weight)
+            position = seat_positions[seat_idx]
+
+            trim_contrib = weight * position
+            moi_contrib = weight * (position ** 2)
+
+            stint_trim += trim_contrib
+            stint_moi += moi_contrib
+
+            stint_seats.append({
+                'seat': seat_idx + 1,
+                'name': paddler_name,
+                'weight': weight,
+                'position': position,
+                'trim_contrib': trim_contrib,
+                'moi_contrib': moi_contrib,
+            })
+
+        trim_moments.append(stint_trim)
+        moi_values.append(stint_moi)
+        seat_breakdown.append(stint_seats)
+
+    return {
+        'trim_moments': trim_moments,
+        'max_abs_trim_moment': max(abs(m) for m in trim_moments),
+        'moi_values': moi_values,
+        'avg_moi': sum(moi_values) / cycle_length,
+        'seat_positions': seat_positions,
+        'seat_breakdown': seat_breakdown,
+        'avg_paddler_weight': avg_paddler_weight,
+        'normalized_max_abs_trim': max(abs(m) for m in trim_moments) / (avg_paddler_weight * 2.5),
+        'normalized_avg_moi': sum(moi_values) / cycle_length / (avg_paddler_weight * sum_pos_sq),
+    }
+
+
+def generate_cycle_rules(schedule_df, all_paddlers, n_seats):
+    """Generate rotation rules from a schedule (similar to solver output).
+
+    Args:
+        schedule_df: DataFrame with columns for each seat, rows for each stint.
+        all_paddlers: List of all paddler names.
+        n_seats: Number of seats.
+
+    Returns:
+        dict mapping paddler name to rule string (e.g., "1→2→3→Out")
+    """
+    cycle_length = len(schedule_df)
+    rules = {}
+
+    for paddler in all_paddlers:
+        positions = []
+        for stint_idx in range(cycle_length):
+            # Find which seat this paddler is in (or Out)
+            found = False
+            for seat_idx in range(n_seats):
+                if schedule_df.iloc[stint_idx, seat_idx] == paddler:
+                    positions.append(str(seat_idx + 1))
+                    found = True
+                    break
+            if not found:
+                positions.append("Out")
+        rules[paddler] = "→".join(positions)
+
+    return rules
+
+
+def generate_paddler_summary(schedule_df, all_paddlers, n_seats):
+    """Generate paddler summary from a schedule.
+
+    Args:
+        schedule_df: DataFrame with columns for each seat, rows for each stint.
+        all_paddlers: List of all paddler names.
+        n_seats: Number of seats.
+
+    Returns:
+        DataFrame with paddler statistics.
+    """
+    cycle_length = len(schedule_df)
+    summary_data = []
+
+    for paddler in all_paddlers:
+        stints_paddled = 0
+        stints_rested = 0
+        current_stretch = 0
+        longest_stretch = 0
+
+        for stint_idx in range(cycle_length):
+            # Check if paddler is in any seat
+            in_canoe = False
+            for seat_idx in range(n_seats):
+                if schedule_df.iloc[stint_idx, seat_idx] == paddler:
+                    in_canoe = True
+                    break
+
+            if in_canoe:
+                stints_paddled += 1
+                current_stretch += 1
+                longest_stretch = max(longest_stretch, current_stretch)
+            else:
+                stints_rested += 1
+                current_stretch = 0
+
+        summary_data.append({
+            'name': paddler,
+            'stints_paddled': stints_paddled,
+            'stints_rested': stints_rested,
+            'longest_stretch_stints': longest_stretch,
+            'stints_paddled_per_cycle': stints_paddled,
+        })
+
+    return pd.DataFrame(summary_data)
+
+
 # Translations
 TRANSLATIONS = {
     "en": {
@@ -58,9 +202,9 @@ TRANSLATIONS = {
 
 **Default:** Most races favor low MOI for responsiveness.""",
         "trim_penalty": "Trim Penalty",
-        "trim_penalty_help": "Minimize worst-case trim imbalance (0 = disabled)",
+        "trim_penalty_help": "How much to penalize trim imbalance (0-1 scale). 1.0 = ~10% output cost for typical worst-case trim. 0 = disabled.",
         "moi_penalty": "MOI Penalty",
-        "moi_penalty_help": "Penalize weight at ends (0 = disabled, negative = prefer ends)",
+        "moi_penalty_help": "How much to penalize weight distribution (-1 to 1). 1.0 = ~12% output cost for typical MOI. Negative = prefer weight at ends (more stable).",
         "steerer_paddle_fraction": "Steerer Paddle %",
         "steerer_paddle_fraction_help": "Fraction of time steerer paddles vs steers. 70-80% flat, 50-60% moderate, 30-40% rough water. Affects output and dead weight penalty.",
         "normalized": "Normalized",
@@ -140,6 +284,16 @@ TRANSLATIONS = {
         "mode_simple_desc": "Optimize rotation pattern without race timing",
         "mode_full": "Full (with Race Time)",
         "mode_full_desc": "Include race simulation and stint optimization",
+        "mode_manual": "Manual Analysis",
+        "mode_manual_desc": "Enter your own rotation schedule and analyze trim/MOI",
+        "manual_schedule": "Manual Schedule",
+        "manual_schedule_help": "Enter paddler names for each seat in each stint. Use the paddler names from the crew list.",
+        "analyze_schedule": "Analyze Schedule",
+        "analyzing": "Analyzing schedule...",
+        "manual_analysis_results": "Manual Schedule Analysis",
+        "invalid_paddler": "Invalid paddler name '{name}' in Stint {stint}, Seat {seat}",
+        "duplicate_paddler": "Paddler '{name}' appears twice in Stint {stint}",
+        "cycle_stints": "Cycle Stints",
         "optimize_stint_length": "Optimize Stint Length",
         "optimize_stint_help": "Search for best stint distance (runs multiple optimizations)",
         "stint_range_min": "Min Stint (km)",
@@ -195,9 +349,9 @@ TRANSLATIONS = {
 
 **Padrão:** A maioria das provas favorece MOI baixo para maior resposta ao leme.""",
         "trim_penalty": "Penalidade de Trim",
-        "trim_penalty_help": "Minimizar pior caso de desequilíbrio (0 = desativado)",
+        "trim_penalty_help": "Quanto penalizar desequilíbrio de trim (escala 0-1). 1.0 = ~10% custo para trim típico. 0 = desativado.",
         "moi_penalty": "Penalidade de MOI",
-        "moi_penalty_help": "Penalizar peso nas extremidades (0 = desativado, negativo = preferir extremidades)",
+        "moi_penalty_help": "Quanto penalizar distribuição de peso (-1 a 1). 1.0 = ~12% custo para MOI típico. Negativo = preferir peso nas extremidades (mais estável).",
         "steerer_paddle_fraction": "% Remada do Leme",
         "steerer_paddle_fraction_help": "Fração do tempo que o leme rema vs governa. 70-80% água calma, 50-60% moderado, 30-40% mar agitado. Afeta contribuição e peso morto.",
         "normalized": "Normalizado",
@@ -277,6 +431,16 @@ TRANSLATIONS = {
         "mode_simple_desc": "Otimizar padrão de rotação sem tempo de prova",
         "mode_full": "Completo (com Tempo de Prova)",
         "mode_full_desc": "Incluir simulação de prova e otimização de turno",
+        "mode_manual": "Análise Manual",
+        "mode_manual_desc": "Insira seu próprio esquema de rotação e analise trim/MOI",
+        "manual_schedule": "Escala Manual",
+        "manual_schedule_help": "Insira os nomes dos remadores para cada banco em cada turno. Use os nomes da lista de tripulação.",
+        "analyze_schedule": "Analisar Escala",
+        "analyzing": "Analisando escala...",
+        "manual_analysis_results": "Análise da Escala Manual",
+        "invalid_paddler": "Nome de remador inválido '{name}' no Turno {stint}, Banco {seat}",
+        "duplicate_paddler": "Remador '{name}' aparece duas vezes no Turno {stint}",
+        "cycle_stints": "Turnos do Ciclo",
         "optimize_stint_length": "Otimizar Duração do Turno",
         "optimize_stint_help": "Buscar melhor distância de turno (executa múltiplas otimizações)",
         "stint_range_min": "Turno Mín. (km)",
@@ -352,11 +516,11 @@ def load_crew_defaults(csv_path=None, uploaded_file=None):
 st.sidebar.header(t("interface_mode"))
 interface_mode = st.sidebar.radio(
     t("interface_mode"),
-    options=["simple", "full"],
-    format_func=lambda x: t("mode_simple") if x == "simple" else t("mode_full"),
+    options=["simple", "full", "manual"],
+    format_func=lambda x: {"simple": t("mode_simple"), "full": t("mode_full"), "manual": t("mode_manual")}[x],
     index=0,
     label_visibility="collapsed",
-    help=t("mode_simple_desc") if True else t("mode_full_desc")
+    help=t("mode_simple_desc")
 )
 
 # --- Crew Configuration (structural) ---
@@ -383,16 +547,20 @@ max_consecutive = st.sidebar.number_input(
 
 with st.sidebar.expander(t("balance_penalties"), expanded=False):
     st.markdown(t("balance_explanation"))
-    trim_penalty_weight = st.number_input(
+    # UI uses 0-1 scale; internally scaled to physical units (×0.001 for trim, ×0.0001 for MOI)
+    trim_penalty_ui = st.number_input(
         t("trim_penalty"),
-        min_value=0.0, max_value=2.0, value=0.5, step=0.05,
+        min_value=0.0, max_value=1.0, value=0.5, step=0.05,
         help=t("trim_penalty_help")
     )
-    moi_penalty_weight = st.number_input(
+    moi_penalty_ui = st.number_input(
         t("moi_penalty"),
-        min_value=-1.0, max_value=2.0, value=0.25, step=0.05,
+        min_value=-1.0, max_value=1.0, value=0.5, step=0.05,
         help=t("moi_penalty_help")
     )
+    # Scale to physical units: trim 1.0 → 0.001 (0.1% per kg-m), moi 1.0 → 0.0001 (0.01% per kg-m²)
+    trim_penalty_weight = trim_penalty_ui * 0.001
+    moi_penalty_weight = moi_penalty_ui * 0.0001
     steerer_paddle_fraction = st.number_input(
         t("steerer_paddle_fraction"),
         min_value=0.2, max_value=1.0, value=0.6, step=0.05,
@@ -628,109 +796,344 @@ edited_elig = st.data_editor(
 # Convert back to numpy array
 eligibility = edited_elig.values.astype(int)
 
-# Run optimization button
-st.header(t("optimize"))
+# Manual mode: show schedule editor instead of optimization
+if interface_mode == "manual":
+    st.header(t("manual_schedule"))
+    st.markdown(t("manual_schedule_help"))
 
-if st.button(t("run_optimization"), type="primary", use_container_width=True):
-    if len(names) != n_paddlers:
-        st.error(t("provide_paddlers_error").format(n=n_paddlers))
+    # Determine cycle length (n_paddlers / n_resting = number of stints per cycle)
+    cycle_length = n_paddlers // n_resting if n_resting > 0 else n_paddlers
+
+    # Try to get default schedule from last optimization result
+    last_result = st.session_state.get('result')
+    if last_result and 'cycle_schedule' in last_result:
+        last_cycle = last_result['cycle_schedule']
+        # Check if dimensions match
+        if len(last_cycle) == cycle_length and len(last_cycle.columns) == n_seats:
+            # Use last optimization result as default
+            schedule_df = last_cycle.copy()
+            # Rename columns to current language
+            schedule_df.columns = [f"{t('seat')} {s+1}" for s in range(n_seats)]
+            schedule_df.index = [f"{t('stint')} {i+1}" for i in range(cycle_length)]
+        else:
+            # Dimensions don't match, use generic default
+            default_schedule = {}
+            for s in range(n_seats):
+                col_name = f"{t('seat')} {s+1}"
+                default_schedule[col_name] = [names[(s + t) % n_paddlers] for t in range(cycle_length)]
+            schedule_df = pd.DataFrame(default_schedule)
+            schedule_df.index = [f"{t('stint')} {i+1}" for i in range(cycle_length)]
     else:
-        paddlers = pd.DataFrame({"name": names})
+        # No previous result, use generic default
+        default_schedule = {}
+        for s in range(n_seats):
+            col_name = f"{t('seat')} {s+1}"
+            default_schedule[col_name] = [names[(s + t) % n_paddlers] for t in range(cycle_length)]
+        schedule_df = pd.DataFrame(default_schedule)
+        schedule_df.index = [f"{t('stint')} {i+1}" for i in range(cycle_length)]
 
-        with st.spinner(t("solving")):
-            try:
-                # Check if we should optimize stint length
-                if interface_mode == "full" and optimize_stint and stint_min is not None:
-                    # Generate stint range
-                    import numpy as np
-                    stint_range = tuple(np.arange(stint_min, stint_max + stint_step/2, stint_step))
+    edited_schedule = st.data_editor(
+        schedule_df,
+        use_container_width=True,
+        hide_index=False,
+        column_config={
+            f"{t('seat')} {s+1}": st.column_config.SelectboxColumn(
+                f"{t('seat')} {s+1}",
+                options=names,
+                required=True
+            ) for s in range(n_seats)
+        }
+    )
 
-                    meta_result = optimize_stint_range(
-                        paddlers,
-                        stint_km_range=stint_range,
-                        max_consecutive=max_consecutive,
-                        distance_km=distance_km,
-                        speed_kmh=speed_kmh,
-                        switch_time_secs=switch_time_secs,
-                        seat_eligibility=eligibility,
-                        seat_weights=seat_weights,
-                        seat_entry_weights=seat_entry_weights,
-                        paddler_ability=paddler_ability,
-                        paddler_weight=paddler_weight,
-                        trim_penalty_weight=trim_penalty_weight,
-                        moi_penalty_weight=moi_penalty_weight,
-                        steerer_paddle_fraction=steerer_paddle_fraction,
-                        n_seats=n_seats,
-                        n_resting=n_resting,
-                        solver_time_secs=time_limit,
-                        gap_tolerance=gap_tolerance,
-                    )
+    # Analyze button
+    if st.button(t("analyze_schedule"), type="primary", use_container_width=True):
+        # Validate schedule
+        errors = []
+        for stint_idx in range(cycle_length):
+            stint_paddlers = []
+            for seat_idx in range(n_seats):
+                paddler_name = edited_schedule.iloc[stint_idx, seat_idx]
+                if paddler_name not in names:
+                    errors.append(t("invalid_paddler").format(
+                        name=paddler_name, stint=stint_idx+1, seat=seat_idx+1))
+                if paddler_name in stint_paddlers:
+                    errors.append(t("duplicate_paddler").format(
+                        name=paddler_name, stint=stint_idx+1))
+                stint_paddlers.append(paddler_name)
 
-                    # Use the best result
-                    best = meta_result['best']
-                    result = solve_rotation_cycle(
-                        paddlers,
-                        stint_km=best['stint_km'],
-                        max_consecutive=max_consecutive,
-                        distance_km=distance_km,
-                        speed_kmh=speed_kmh,
-                        switch_time_secs=switch_time_secs,
-                        seat_eligibility=eligibility,
-                        seat_weights=seat_weights,
-                        seat_entry_weights=seat_entry_weights,
-                        paddler_ability=paddler_ability,
-                        paddler_weight=paddler_weight,
-                        trim_penalty_weight=trim_penalty_weight,
-                        moi_penalty_weight=moi_penalty_weight,
-                        steerer_paddle_fraction=steerer_paddle_fraction,
-                        n_seats=n_seats,
-                        n_resting=n_resting,
-                        solver_time_secs=time_limit,
-                        gap_tolerance=gap_tolerance,
-                        fatigue_work_rate=fatigue_work_rate,
-                        fatigue_tau_recovery=fatigue_tau_recovery,
-                        power_speed_exponent=power_speed_exponent,
-                    )
+        if errors:
+            for err in errors:
+                st.error(err)
+        else:
+            with st.spinner(t("analyzing")):
+                # Create weight dict
+                paddler_weights = {name: weight for name, weight in zip(names, paddler_weight)}
 
-                    st.session_state['meta_result'] = meta_result
-                    st.session_state['has_meta_result'] = True
-                else:
-                    result = solve_rotation_cycle(
-                        paddlers,
-                        stint_km=stint_km,
-                        max_consecutive=max_consecutive,
-                        distance_km=distance_km,
-                        speed_kmh=speed_kmh,
-                        switch_time_secs=switch_time_secs,
-                        seat_eligibility=eligibility,
-                        seat_weights=seat_weights,
-                        seat_entry_weights=seat_entry_weights,
-                        paddler_ability=paddler_ability,
-                        paddler_weight=paddler_weight,
-                        trim_penalty_weight=trim_penalty_weight,
-                        moi_penalty_weight=moi_penalty_weight,
-                        steerer_paddle_fraction=steerer_paddle_fraction,
-                        n_seats=n_seats,
-                        n_resting=n_resting,
-                        solver_time_secs=time_limit,
-                        gap_tolerance=gap_tolerance,
-                        fatigue_work_rate=fatigue_work_rate,
-                        fatigue_tau_recovery=fatigue_tau_recovery,
-                        power_speed_exponent=power_speed_exponent,
-                    )
-                    st.session_state['has_meta_result'] = False
+                # Analyze
+                trim_stats = analyze_manual_schedule(edited_schedule, paddler_weights, n_seats)
 
-                # Store result in session state
-                st.session_state['result'] = result
-                st.session_state['has_result'] = True
-                st.session_state['result_mode'] = interface_mode
+                # Store in session state
+                st.session_state['manual_trim_stats'] = trim_stats
+                st.session_state['manual_schedule'] = edited_schedule
+                st.session_state['has_manual_result'] = True
 
-            except Exception as e:
-                st.error(t("optimization_failed").format(error=str(e)))
-                st.session_state['has_result'] = False
+# Optimization mode: show optimize button
+else:
+    # Clear manual results when not in manual mode
+    st.session_state['has_manual_result'] = False
 
-# Display results
-if st.session_state.get('has_result', False):
+    st.header(t("optimize"))
+
+    if st.button(t("run_optimization"), type="primary", use_container_width=True):
+        if len(names) != n_paddlers:
+            st.error(t("provide_paddlers_error").format(n=n_paddlers))
+        else:
+            paddlers = pd.DataFrame({"name": names})
+
+            with st.spinner(t("solving")):
+                try:
+                    # Check if we should optimize stint length
+                    if interface_mode == "full" and optimize_stint and stint_min is not None:
+                        # Generate stint range
+                        import numpy as np
+                        stint_range = tuple(np.arange(stint_min, stint_max + stint_step/2, stint_step))
+
+                        meta_result = optimize_stint_range(
+                            paddlers,
+                            stint_km_range=stint_range,
+                            max_consecutive=max_consecutive,
+                            distance_km=distance_km,
+                            speed_kmh=speed_kmh,
+                            switch_time_secs=switch_time_secs,
+                            seat_eligibility=eligibility,
+                            seat_weights=seat_weights,
+                            seat_entry_weights=seat_entry_weights,
+                            paddler_ability=paddler_ability,
+                            paddler_weight=paddler_weight,
+                            trim_penalty_weight=trim_penalty_weight,
+                            moi_penalty_weight=moi_penalty_weight,
+                            steerer_paddle_fraction=steerer_paddle_fraction,
+                            n_seats=n_seats,
+                            n_resting=n_resting,
+                            solver_time_secs=time_limit,
+                            gap_tolerance=gap_tolerance,
+                        )
+
+                        # Use the best result
+                        best = meta_result['best']
+                        result = solve_rotation_cycle(
+                            paddlers,
+                            stint_km=best['stint_km'],
+                            max_consecutive=max_consecutive,
+                            distance_km=distance_km,
+                            speed_kmh=speed_kmh,
+                            switch_time_secs=switch_time_secs,
+                            seat_eligibility=eligibility,
+                            seat_weights=seat_weights,
+                            seat_entry_weights=seat_entry_weights,
+                            paddler_ability=paddler_ability,
+                            paddler_weight=paddler_weight,
+                            trim_penalty_weight=trim_penalty_weight,
+                            moi_penalty_weight=moi_penalty_weight,
+                            steerer_paddle_fraction=steerer_paddle_fraction,
+                            n_seats=n_seats,
+                            n_resting=n_resting,
+                            solver_time_secs=time_limit,
+                            gap_tolerance=gap_tolerance,
+                            fatigue_work_rate=fatigue_work_rate,
+                            fatigue_tau_recovery=fatigue_tau_recovery,
+                            power_speed_exponent=power_speed_exponent,
+                        )
+
+                        st.session_state['meta_result'] = meta_result
+                        st.session_state['has_meta_result'] = True
+                    else:
+                        result = solve_rotation_cycle(
+                            paddlers,
+                            stint_km=stint_km,
+                            max_consecutive=max_consecutive,
+                            distance_km=distance_km,
+                            speed_kmh=speed_kmh,
+                            switch_time_secs=switch_time_secs,
+                            seat_eligibility=eligibility,
+                            seat_weights=seat_weights,
+                            seat_entry_weights=seat_entry_weights,
+                            paddler_ability=paddler_ability,
+                            paddler_weight=paddler_weight,
+                            trim_penalty_weight=trim_penalty_weight,
+                            moi_penalty_weight=moi_penalty_weight,
+                            steerer_paddle_fraction=steerer_paddle_fraction,
+                            n_seats=n_seats,
+                            n_resting=n_resting,
+                            solver_time_secs=time_limit,
+                            gap_tolerance=gap_tolerance,
+                            fatigue_work_rate=fatigue_work_rate,
+                            fatigue_tau_recovery=fatigue_tau_recovery,
+                            power_speed_exponent=power_speed_exponent,
+                        )
+                        st.session_state['has_meta_result'] = False
+
+                    # Store result in session state
+                    st.session_state['result'] = result
+                    st.session_state['has_result'] = True
+                    st.session_state['result_mode'] = interface_mode
+
+                except Exception as e:
+                    st.error(t("optimization_failed").format(error=str(e)))
+                    st.session_state['has_result'] = False
+
+# Display manual analysis results
+if st.session_state.get('has_manual_result', False):
+    st.header(t("manual_analysis_results"))
+
+    trim_stats = st.session_state['manual_trim_stats']
+    manual_schedule = st.session_state['manual_schedule']
+    cycle_length = len(manual_schedule)
+
+    # Key metrics (same as simple mode)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(t("cycle_length"), f"{cycle_length} {t('stints').lower()}")
+    with col2:
+        st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
+
+    # Generate rotation rules
+    cycle_rules = generate_cycle_rules(manual_schedule, names, n_seats)
+
+    # Cycle rules (same as automatic mode)
+    st.subheader(t("rotation_rules"))
+    st.markdown(t("rotation_rules_desc"))
+
+    rules_df = pd.DataFrame([
+        {t('paddler'): name, t('rule'): rule}
+        for name, rule in cycle_rules.items()
+    ])
+    st.dataframe(rules_df, use_container_width=True, hide_index=True)
+
+    # Colored rotation pattern grid (show 2 cycles like automatic mode)
+    st.subheader(t("rotation_pattern"))
+
+    all_paddlers_set = set(names)
+    n_rows_to_show = cycle_length * 2  # Show 2 cycles
+
+    st.markdown(t("rotation_pattern_desc").format(n=cycle_length, times="∞"))
+
+    # Build schedule for 2 cycles by repeating
+    schedule_2cycles = pd.concat([manual_schedule, manual_schedule], ignore_index=True)
+    schedule_2cycles.columns = [f"Banco {s+1}" for s in range(n_seats)]
+
+    # Build matrix with paddlers out (resting)
+    out_matrix = []
+    for i in range(n_rows_to_show):
+        in_canoe = set(schedule_2cycles.iloc[i].values)
+        out = sorted(all_paddlers_set - in_canoe)
+        out_matrix.append(out)
+    out_df = pd.DataFrame(out_matrix, columns=[f"{t('out')} {j+1}" for j in range(n_resting)])
+
+    # Combine in and out
+    combined = pd.concat([schedule_2cycles.reset_index(drop=True), out_df], axis=1)
+    paddler_to_num = {name: i for i, name in enumerate(names)}
+    combined_numeric = combined.replace(paddler_to_num)
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, max(3, n_rows_to_show * 0.6)),
+                                    gridspec_kw={'width_ratios': [n_seats, n_resting], 'wspace': 0.05})
+
+    # Left plot: seats (in canoe)
+    im1 = ax1.imshow(combined_numeric.iloc[:, :n_seats].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax1.set_xticks(range(n_seats))
+    seat_labels = [f"{t('seat')} {i+1}" for i in range(n_seats)]
+    ax1.set_xticklabels(seat_labels, fontsize=9)
+    ax1.set_yticks(range(n_rows_to_show))
+    ax1.set_yticklabels([f"{t('stint')} {i+1}" for i in range(n_rows_to_show)])
+
+    for i in range(n_rows_to_show):
+        for j in range(n_seats):
+            name = combined.iloc[i, j]
+            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    # Highlight first cycle with yellow dashed rectangle
+    rect = Rectangle((-0.5, -0.5), n_seats, cycle_length, linewidth=3,
+                    edgecolor='yellow', facecolor='none', linestyle='--')
+    ax1.add_patch(rect)
+
+    # Right plot: out (resting)
+    im2 = ax2.imshow(combined_numeric.iloc[:, n_seats:].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax2.set_xticks(range(n_resting))
+    ax2.set_xticklabels([f"{t('out')} {j+1}" for j in range(n_resting)], fontsize=9)
+    ax2.set_yticks(range(n_rows_to_show))
+    ax2.set_yticklabels([])
+
+    for i in range(n_rows_to_show):
+        for j in range(n_resting):
+            name = combined.iloc[i, n_seats + j]
+            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+
+    # Paddler summary (same as simple mode)
+    st.subheader(t("paddler_summary"))
+    paddler_summary = generate_paddler_summary(manual_schedule, names, n_seats)
+    cols_to_show = ['name', 'stints_paddled', 'stints_rested', 'longest_stretch_stints', 'stints_paddled_per_cycle']
+    st.dataframe(paddler_summary[cols_to_show], use_container_width=True, hide_index=True)
+
+    # Balance analysis (trim stats)
+    st.subheader(t("balance_analysis"))
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
+    with col2:
+        st.metric(t("avg_moi"), f"{trim_stats['avg_moi']:.1f} kg-m²")
+
+    # Show normalized values for comparison across crews
+    if 'normalized_max_abs_trim' in trim_stats:
+        st.caption(f"{t('normalized')}: Trim={trim_stats['normalized_max_abs_trim']:.2f}, "
+                  f"MOI={trim_stats['normalized_avg_moi']:.2f}")
+
+    # Stint details table
+    st.markdown(f"**{t('cycle_stint_details')}**")
+    trim_data = pd.DataFrame({
+        t('stint'): [f"{t('stint')} {i+1}" for i in range(len(trim_stats['trim_moments']))],
+        t('trim_kgm'): [f"{m:+.1f}" for m in trim_stats['trim_moments']],
+        t('direction'): [t('stern') if m > 0 else t('bow') if m < 0 else t('neutral')
+                      for m in trim_stats['trim_moments']],
+        t('moi_kgm2'): [f"{m:.1f}" for m in trim_stats['moi_values']]
+    })
+    st.dataframe(trim_data, use_container_width=True, hide_index=True)
+
+    # Seat breakdown table showing intermediate calculations
+    if 'seat_breakdown' in trim_stats:
+        with st.expander(t("seat_breakdown"), expanded=False):
+            for stint_idx, stint_seats in enumerate(trim_stats['seat_breakdown']):
+                st.markdown(f"**{t('stint')} {stint_idx + 1}**")
+                breakdown_rows = []
+                for seat_data in stint_seats:
+                    breakdown_rows.append({
+                        t('seat'): seat_data['seat'],
+                        t('paddler'): seat_data['name'],
+                        t('weight_kg'): f"{seat_data['weight']:.1f}",
+                        t('position_m'): f"{seat_data['position']:+.1f}",
+                        t('trim_contrib'): f"{seat_data['trim_contrib']:+.1f}",
+                        t('moi_contrib'): f"{seat_data['moi_contrib']:.1f}",
+                    })
+                # Add total row
+                total_trim = sum(s['trim_contrib'] for s in stint_seats)
+                total_moi = sum(s['moi_contrib'] for s in stint_seats)
+                breakdown_rows.append({
+                    t('seat'): '',
+                    t('paddler'): f"**{t('total')}**",
+                    t('weight_kg'): '',
+                    t('position_m'): '',
+                    t('trim_contrib'): f"**{total_trim:+.1f}**",
+                    t('moi_contrib'): f"**{total_moi:.1f}**",
+                })
+                breakdown_df = pd.DataFrame(breakdown_rows)
+                st.dataframe(breakdown_df, use_container_width=True, hide_index=True)
+
+# Display optimization results (not shown in manual mode)
+if st.session_state.get('has_result', False) and interface_mode != "manual":
     result = st.session_state['result']
     result_mode = st.session_state.get('result_mode', 'full')
 

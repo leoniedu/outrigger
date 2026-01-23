@@ -214,12 +214,14 @@ def solve_rotation_cycle(paddlers,
                         >1 = stronger paddler, <1 = weaker paddler.
         paddler_weight: Optional list of weights per paddler (kg or relative). Default all 75.0.
                        Used for trim (fore-aft balance) calculation.
-        trim_penalty_weight: Penalty for max abs trim, in output-equivalent units (default 0.0).
-                            E.g., 0.05 means "worst-case trim costs up to 5% of output".
-                            Uses minimax: minimizes the worst-case trim imbalance across stints.
-        moi_penalty_weight: Penalty for moment of inertia, in output-equivalent units (default 0.0).
-                           E.g., 0.05 means "max MOI costs up to 5% of output".
-                           Positive = prefer weight in middle, negative = prefer weight at ends.
+        trim_penalty_weight: Output cost per kg-m of trim imbalance (default 0.0).
+                            E.g., 0.001 means "each kg-m of trim costs 0.1% of output".
+                            Typical trim: 0-100 kg-m → 0.001 gives 0-10% output cost.
+                            Uses minimax: minimizes worst-case trim across stints.
+        moi_penalty_weight: Output cost per kg-m² of MOI (default 0.0).
+                           E.g., 0.0001 means "each kg-m² costs 0.01% of output".
+                           Typical MOI: 1000-1500 kg-m² → 0.0001 gives 10-15% output cost.
+                           Positive = prefer weight in middle, negative = prefer at ends.
         steerer_paddle_fraction: Fraction of time steerer (seat 6) paddles vs steers (default 0.6).
                                 Affects seat 6 output contribution and dead weight penalty.
                                 0.7-0.8 for flat/sprint, 0.5-0.6 moderate, 0.3-0.4 rough water.
@@ -320,6 +322,7 @@ def solve_rotation_cycle(paddlers,
 
     # Seat positions for trim calculation (meters from center, negative = bow)
     seat_positions = [-(S-1)/2 + i for i in range(S)]  # e.g., [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5] for S=6
+    sum_pos_sq = sum(p**2 for p in seat_positions)  # For MOI normalization
 
     # Compute number of stints - deterministic based on distance
     n_stints = math.ceil(distance_km / stint_km)
@@ -516,57 +519,52 @@ def solve_rotation_cycle(paddlers,
         objective = objective - entry_weight_penalty
 
     # ==========================================================================
-    # PENALTY SCALING: All penalties are now in "output equivalent" units
+    # PENALTY SCALING: Physical units with output-equivalent interpretation
     # ==========================================================================
-    # Base objective is roughly: sum(seat_weights) * avg_output ≈ 6 * 0.85 ≈ 5 per stint
-    # Penalty weights are interpreted as: "fraction of output lost at maximum penalty"
-    # E.g., trim_penalty_weight=0.05 means "worst-case trim costs up to 5% of output"
+    # Penalties are in physical units (kg-m for trim, kg-m² for MOI) scaled to
+    # output-equivalent cost. This keeps race time calculations separate -
+    # penalties only affect optimization, not speed predictions.
     #
-    # This keeps race time calculations separate - penalties only affect optimization,
-    # not the actual speed predictions (we don't know true effect of trim on speed).
+    # trim_penalty_weight: output cost per kg-m of trim imbalance
+    #   E.g., 0.001 means "each kg-m of trim costs 0.1% of output"
+    #   Typical trim range: 0-100 kg-m, so 0.001 → 0-10% output cost
+    #
+    # moi_penalty_weight: output cost per kg-m² of MOI
+    #   E.g., 0.0001 means "each kg-m² of MOI costs 0.01% of output"
+    #   Typical MOI range: 1000-1500 kg-m², so 0.0001 → 10-15% output cost
+    #
+    # dead_weight_penalty: output cost per kg of excess steerer weight
+    #   E.g., 0.002 means "each kg above average costs 0.2% of output (when steering)"
     # ==========================================================================
 
     # Reference output per stint (for scaling penalties to output-equivalent units)
     reference_output_per_stint = sum(seat_weights)  # ~6 for typical crew
 
-    # Maximum possible values for normalization (so normalized values are ~0-1)
-    max_seat_position = max(abs(p) for p in seat_positions)  # e.g., 2.5 for 6-seat
-    max_possible_trim = S * max(paddler_weight) * max_seat_position  # worst-case trim
-    sum_pos_sq = sum(p**2 for p in seat_positions)  # e.g., 17.5 for 6-seat
-    max_possible_moi = S * max(paddler_weight) * max(p**2 for p in seat_positions)
-
     if use_trim_penalty:
-        # Minimax trim penalty: penalize worst-case absolute trim across all stints
-        # Normalized so MaxAbsTrim / max_possible_trim is in [0, 1]
-        # penalty_weight=0.05 means "max trim costs 5% of output per stint"
-        normalized_trim = MaxAbsTrim / max_possible_trim  # ~0-1
-        trim_penalty = trim_penalty_weight * reference_output_per_stint * normalized_trim * cycle_length
+        # Trim penalty in physical units: kg-m
+        # penalty = weight × MaxAbsTrim (in kg-m) × cycle_length
+        trim_penalty = trim_penalty_weight * reference_output_per_stint * MaxAbsTrim * cycle_length
         objective = objective - trim_penalty
 
     if use_moi_penalty:
-        # MOI penalty: penalize weight at ends (higher MOI = less maneuverable)
-        # Normalized so avg_moi / max_possible_moi is in [0, 1]
-        # penalty_weight=0.05 means "max MOI costs 5% of output per stint"
-        moi_penalty = moi_penalty_weight * reference_output_per_stint * lpSum(
-            MOI[t] / max_possible_moi for t in range(cycle_length)
-        )
+        # MOI penalty in physical units: kg-m²
+        # penalty = weight × sum(MOI) (in kg-m²)
+        moi_penalty = moi_penalty_weight * reference_output_per_stint * lpSum(MOI[t] for t in range(cycle_length))
         objective = objective - moi_penalty
 
     # Dead weight penalty for steerer (seat 6)
-    # When steering (not paddling), the steerer's weight is pure drag
-    # Penalty is proportional to: (weight/avg - 1) × (1 - paddle_fraction)
-    # A steerer 20% heavier than avg at paddle_fraction=0.5 has penalty = 0.2 × 0.5 = 0.1
+    # Penalty in physical units: kg of excess weight × (1 - paddle_fraction)
     if steerer_paddle_fraction < 1.0:
         steerer_eligible = [p for p in range(P) if eligibility[p, steerer_seat]]
-        # Normalized excess weight: (weight/avg - 1) is ~[-0.3, +0.3] for typical crews
-        # Scale factor: 0.5 means "20% excess weight at 50% steering costs 2% of output"
-        dead_weight_scale = 0.5  # Adjustable: how much does steerer weight matter?
+        # Excess weight in kg: (paddler_weight - avg_paddler_weight)
+        # Scaled by (1 - paddle_fraction) since dead weight only matters when steering
+        dead_weight_penalty_weight = 0.002  # 0.2% output cost per kg excess when fully steering
         dead_weight_penalty = lpSum(
-            X[p, steerer_seat, t] * (paddler_weight[p] / avg_paddler_weight - 1.0) * (1.0 - steerer_paddle_fraction)
+            X[p, steerer_seat, t] * (paddler_weight[p] - avg_paddler_weight) * (1.0 - steerer_paddle_fraction)
             for p in steerer_eligible
             for t in range(cycle_length)
         )
-        objective = objective - dead_weight_scale * reference_output_per_stint * dead_weight_penalty
+        objective = objective - dead_weight_penalty_weight * reference_output_per_stint * dead_weight_penalty
 
     prob += objective
 
