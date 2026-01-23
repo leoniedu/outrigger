@@ -550,12 +550,12 @@ with st.sidebar.expander(t("balance_penalties"), expanded=False):
     # UI uses 0-1 scale; internally scaled to physical units (×0.001 for trim, ×0.0001 for MOI)
     trim_penalty_ui = st.number_input(
         t("trim_penalty"),
-        min_value=0.0, max_value=1.0, value=0.5, step=0.05,
+        min_value=0.0, max_value=1.0, value=0.0, step=0.05,
         help=t("trim_penalty_help")
     )
     moi_penalty_ui = st.number_input(
         t("moi_penalty"),
-        min_value=-1.0, max_value=1.0, value=0.5, step=0.05,
+        min_value=-1.0, max_value=1.0, value=0.0, step=0.05,
         help=t("moi_penalty_help")
     )
     # Scale to physical units: trim 1.0 → 0.001 (0.1% per kg-m), moi 1.0 → 0.0001 (0.01% per kg-m²)
@@ -563,7 +563,7 @@ with st.sidebar.expander(t("balance_penalties"), expanded=False):
     moi_penalty_weight = moi_penalty_ui * 0.0001
     steerer_paddle_fraction = st.number_input(
         t("steerer_paddle_fraction"),
-        min_value=0.2, max_value=1.0, value=0.6, step=0.05,
+        min_value=0.2, max_value=1.0, value=0.8, step=0.05,
         help=t("steerer_paddle_fraction_help")
     )
 
@@ -730,10 +730,8 @@ st.header(t("seat_configuration"))
 
 col1, col2 = st.columns(2)
 
-# Default seat weights from desafio60k2025.qmd
-default_seat_weights = [1.05, 1.02, 1.02, 1.01, 1.00, 1.10]
-if n_seats != 6:
-    default_seat_weights = [1.0] * n_seats
+# Default seat weights (all equal)
+default_seat_weights = [1.0] * n_seats
 
 # Default seat entry weights from desafio60k2025.qmd
 default_entry_weights = [1.0, 2.0, 1.5, 1.5, 2.0, 1.0]
