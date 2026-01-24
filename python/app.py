@@ -181,6 +181,9 @@ def display_rotation_pattern(cycle_schedule, all_paddlers, n_seats, n_resting,
                             cycle_length, n_total_cycles, t_func):
     """Display colored rotation pattern grid.
 
+    Paddlers are colored by group (those who enter/exit together).
+    Uses grayscale-friendly colors for B&W printing.
+
     Args:
         cycle_schedule: DataFrame with one cycle of seat assignments
         all_paddlers: list of all paddler names
@@ -216,15 +219,63 @@ def display_rotation_pattern(cycle_schedule, all_paddlers, n_seats, n_resting,
 
     # Combine in and out
     combined = pd.concat([schedule_2cycles.reset_index(drop=True), out_df], axis=1)
-    paddler_to_num = {name: i for i, name in enumerate(all_paddlers)}
-    combined_numeric = combined.replace(paddler_to_num)
+
+    # Identify paddler groups based on rest pattern (which stint(s) they rest in the first cycle)
+    paddler_rest_pattern = {}
+    for paddler in all_paddlers:
+        rest_stints = []
+        for stint_idx in range(cycle_length):
+            # Check if paddler is resting this stint
+            in_canoe = False
+            for seat_idx in range(n_seats):
+                if cycle_schedule.iloc[stint_idx, seat_idx] == paddler:
+                    in_canoe = True
+                    break
+            if not in_canoe:
+                rest_stints.append(stint_idx)
+        paddler_rest_pattern[paddler] = tuple(rest_stints)
+
+    # Group paddlers by rest pattern
+    pattern_to_group = {}
+    group_counter = 0
+    for paddler in all_paddlers:
+        pattern = paddler_rest_pattern[paddler]
+        if pattern not in pattern_to_group:
+            pattern_to_group[pattern] = group_counter
+            group_counter += 1
+
+    paddler_to_group = {paddler: pattern_to_group[paddler_rest_pattern[paddler]]
+                        for paddler in all_paddlers}
+    n_groups = group_counter
+
+    # Create group-based numeric matrix
+    combined_groups = combined.replace(paddler_to_group)
+
+    # B&W friendly colors: distinct grayscale values with good contrast
+    # Using colors that are distinguishable in both color and grayscale
+    bw_colors = [
+        '#2E2E2E',  # Dark gray (almost black)
+        '#7F7F7F',  # Medium gray
+        '#BFBFBF',  # Light gray
+        '#4A4A4A',  # Dark-medium gray
+        '#9E9E9E',  # Medium-light gray
+        '#E0E0E0',  # Very light gray
+        '#1A1A1A',  # Very dark gray
+        '#6B6B6B',  # Gray
+        '#ADADAD',  # Light-medium gray
+    ]
+
+    # Create custom colormap from the B&W colors
+    from matplotlib.colors import ListedColormap
+    cmap = ListedColormap(bw_colors[:max(n_groups, 1)])
 
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, max(3, n_rows_to_show * 0.6)),
                                     gridspec_kw={'width_ratios': [n_seats, n_resting], 'wspace': 0.05})
 
     # Left plot: seats (in canoe)
-    ax1.imshow(combined_numeric.iloc[:, :n_seats].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax1.imshow(combined_groups.iloc[:, :n_seats].values, cmap=cmap, aspect='auto',
+               vmin=0, vmax=max(n_groups - 1, 0))
     ax1.set_xticks(range(n_seats))
     seat_labels = [f"{t_func('seat')} {i+1}" for i in range(n_seats)]
     ax1.set_xticklabels(seat_labels, fontsize=9)
@@ -234,15 +285,19 @@ def display_rotation_pattern(cycle_schedule, all_paddlers, n_seats, n_resting,
     for i in range(n_rows_to_show):
         for j in range(n_seats):
             name = combined.iloc[i, j]
-            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+            group = paddler_to_group.get(name, 0)
+            # Use white text for dark backgrounds, black for light
+            text_color = 'white' if group in [0, 3, 6] else 'black'
+            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color=text_color)
 
     # Highlight first cycle with yellow dashed rectangle
     rect = Rectangle((-0.5, -0.5), n_seats, cycle_length, linewidth=3,
-                    edgecolor='yellow', facecolor='none', linestyle='--')
+                    edgecolor='gold', facecolor='none', linestyle='--')
     ax1.add_patch(rect)
 
     # Right plot: out (resting)
-    ax2.imshow(combined_numeric.iloc[:, n_seats:].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax2.imshow(combined_groups.iloc[:, n_seats:].values, cmap=cmap, aspect='auto',
+               vmin=0, vmax=max(n_groups - 1, 0))
     ax2.set_xticks(range(n_resting))
     ax2.set_xticklabels([f"{t_func('out')} {j+1}" for j in range(n_resting)], fontsize=9)
     ax2.set_yticks(range(n_rows_to_show))
@@ -251,7 +306,9 @@ def display_rotation_pattern(cycle_schedule, all_paddlers, n_seats, n_resting,
     for i in range(n_rows_to_show):
         for j in range(n_resting):
             name = combined.iloc[i, n_seats + j]
-            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+            group = paddler_to_group.get(name, 0)
+            text_color = 'white' if group in [0, 3, 6] else 'black'
+            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color=text_color)
 
     plt.tight_layout()
     st.pyplot(fig)
