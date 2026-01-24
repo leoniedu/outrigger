@@ -154,6 +154,213 @@ def generate_paddler_summary(schedule_df, all_paddlers, n_seats):
     return pd.DataFrame(summary_data)
 
 
+# =============================================================================
+# UNIFIED DISPLAY FUNCTIONS
+# These functions are used by both manual and optimized modes to ensure
+# consistent output formatting.
+# =============================================================================
+
+def display_rotation_rules(cycle_rules, t_func):
+    """Display rotation rules table.
+
+    Args:
+        cycle_rules: dict mapping paddler name to rule string
+        t_func: translation function
+    """
+    st.subheader(t_func("rotation_rules"))
+    st.markdown(t_func("rotation_rules_desc"))
+
+    rules_df = pd.DataFrame([
+        {t_func('paddler'): name, t_func('rule'): rule}
+        for name, rule in cycle_rules.items()
+    ])
+    st.dataframe(rules_df, use_container_width=True, hide_index=True)
+
+
+def display_rotation_pattern(cycle_schedule, all_paddlers, n_seats, n_resting,
+                            cycle_length, n_total_cycles, t_func):
+    """Display colored rotation pattern grid.
+
+    Args:
+        cycle_schedule: DataFrame with one cycle of seat assignments
+        all_paddlers: list of all paddler names
+        n_seats: number of seats
+        n_resting: number of paddlers resting each stint
+        cycle_length: number of stints in one cycle
+        n_total_cycles: total number of cycles in race (use None or "∞" for manual)
+        t_func: translation function
+    """
+    st.subheader(t_func("rotation_pattern"))
+
+    # Show 2 cycles
+    n_rows_to_show = cycle_length * 2
+
+    # Format n_total_cycles for display
+    cycles_display = n_total_cycles if n_total_cycles is not None else "∞"
+    st.markdown(t_func("rotation_pattern_desc").format(n=cycle_length, times=cycles_display))
+
+    # Build schedule for 2 cycles by repeating
+    schedule_2cycles = pd.concat([cycle_schedule, cycle_schedule], ignore_index=True)
+    # Normalize column names
+    schedule_2cycles.columns = [f"Banco {s+1}" for s in range(n_seats)]
+
+    all_paddlers_set = set(all_paddlers)
+
+    # Build matrix with paddlers out (resting)
+    out_matrix = []
+    for i in range(n_rows_to_show):
+        in_canoe = set(schedule_2cycles.iloc[i].values)
+        out = sorted(all_paddlers_set - in_canoe)
+        out_matrix.append(out)
+    out_df = pd.DataFrame(out_matrix, columns=[f"{t_func('out')} {j+1}" for j in range(n_resting)])
+
+    # Combine in and out
+    combined = pd.concat([schedule_2cycles.reset_index(drop=True), out_df], axis=1)
+    paddler_to_num = {name: i for i, name in enumerate(all_paddlers)}
+    combined_numeric = combined.replace(paddler_to_num)
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, max(3, n_rows_to_show * 0.6)),
+                                    gridspec_kw={'width_ratios': [n_seats, n_resting], 'wspace': 0.05})
+
+    # Left plot: seats (in canoe)
+    ax1.imshow(combined_numeric.iloc[:, :n_seats].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax1.set_xticks(range(n_seats))
+    seat_labels = [f"{t_func('seat')} {i+1}" for i in range(n_seats)]
+    ax1.set_xticklabels(seat_labels, fontsize=9)
+    ax1.set_yticks(range(n_rows_to_show))
+    ax1.set_yticklabels([f"{t_func('stint')} {i+1}" for i in range(n_rows_to_show)])
+
+    for i in range(n_rows_to_show):
+        for j in range(n_seats):
+            name = combined.iloc[i, j]
+            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    # Highlight first cycle with yellow dashed rectangle
+    rect = Rectangle((-0.5, -0.5), n_seats, cycle_length, linewidth=3,
+                    edgecolor='yellow', facecolor='none', linestyle='--')
+    ax1.add_patch(rect)
+
+    # Right plot: out (resting)
+    ax2.imshow(combined_numeric.iloc[:, n_seats:].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
+    ax2.set_xticks(range(n_resting))
+    ax2.set_xticklabels([f"{t_func('out')} {j+1}" for j in range(n_resting)], fontsize=9)
+    ax2.set_yticks(range(n_rows_to_show))
+    ax2.set_yticklabels([])
+
+    for i in range(n_rows_to_show):
+        for j in range(n_resting):
+            name = combined.iloc[i, n_seats + j]
+            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+
+
+def display_paddler_summary(paddler_summary, show_time_columns, t_func):
+    """Display paddler summary table.
+
+    Args:
+        paddler_summary: DataFrame with paddler statistics
+        show_time_columns: if True, show all columns; if False, hide time-related columns
+        t_func: translation function
+    """
+    st.subheader(t_func("paddler_summary"))
+    summary = paddler_summary.copy()
+
+    if show_time_columns:
+        st.dataframe(summary, use_container_width=True, hide_index=True)
+    else:
+        cols_to_show = ['name', 'stints_paddled', 'stints_rested', 'longest_stretch_stints', 'stints_paddled_per_cycle']
+        cols_available = [c for c in cols_to_show if c in summary.columns]
+        st.dataframe(summary[cols_available], use_container_width=True, hide_index=True)
+
+
+def display_balance_analysis(trim_stats, show_cycle_outputs, t_func):
+    """Display trim and MOI balance analysis.
+
+    Args:
+        trim_stats: dict with trim/MOI statistics
+        show_cycle_outputs: if True, include avg_output column in stint details
+        t_func: translation function
+    """
+    if not trim_stats:
+        return
+
+    st.subheader(t_func("balance_analysis"))
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(t_func("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
+    with col2:
+        st.metric(t_func("avg_moi"), f"{trim_stats.get('avg_moi', 0):.1f} kg-m²")
+
+    # Show normalized values for comparison across crews
+    if 'normalized_max_abs_trim' in trim_stats:
+        st.caption(f"{t_func('normalized')}: Trim={trim_stats['normalized_max_abs_trim']:.2f}, "
+                  f"MOI={trim_stats['normalized_avg_moi']:.2f}")
+
+    # Stint details table
+    st.markdown(f"**{t_func('cycle_stint_details')}**")
+
+    trim_data_dict = {
+        t_func('stint'): [f"{t_func('stint')} {i+1}" for i in range(len(trim_stats['trim_moments']))],
+    }
+
+    # Include avg_output if available and requested
+    if show_cycle_outputs and 'cycle_avg_outputs' in trim_stats:
+        trim_data_dict[t_func('avg_output')] = [f"{o:.1%}" for o in trim_stats['cycle_avg_outputs']]
+
+    trim_data_dict[t_func('trim_kgm')] = [f"{m:+.1f}" for m in trim_stats['trim_moments']]
+    trim_data_dict[t_func('direction')] = [
+        t_func('stern') if m > 0 else t_func('bow') if m < 0 else t_func('neutral')
+        for m in trim_stats['trim_moments']
+    ]
+    trim_data_dict[t_func('moi_kgm2')] = [f"{m:.1f}" for m in trim_stats.get('moi_values', [0] * len(trim_stats['trim_moments']))]
+
+    trim_data = pd.DataFrame(trim_data_dict)
+    st.dataframe(trim_data, use_container_width=True, hide_index=True)
+
+
+def display_seat_breakdown(trim_stats, t_func, expanded=False):
+    """Display seat breakdown table showing intermediate calculations.
+
+    Args:
+        trim_stats: dict with trim/MOI statistics including seat_breakdown
+        t_func: translation function
+        expanded: whether the expander should be expanded by default
+    """
+    if 'seat_breakdown' not in trim_stats:
+        return
+
+    with st.expander(t_func("seat_breakdown"), expanded=expanded):
+        for stint_idx, stint_seats in enumerate(trim_stats['seat_breakdown']):
+            st.markdown(f"**{t_func('stint')} {stint_idx + 1}**")
+            breakdown_rows = []
+            for seat_data in stint_seats:
+                breakdown_rows.append({
+                    t_func('seat'): seat_data['seat'],
+                    t_func('paddler'): seat_data['name'],
+                    t_func('weight_kg'): f"{seat_data['weight']:.1f}",
+                    t_func('position_m'): f"{seat_data['position']:+.1f}",
+                    t_func('trim_contrib'): f"{seat_data['trim_contrib']:+.1f}",
+                    t_func('moi_contrib'): f"{seat_data['moi_contrib']:.1f}",
+                })
+            # Add total row
+            total_trim = sum(s['trim_contrib'] for s in stint_seats)
+            total_moi = sum(s['moi_contrib'] for s in stint_seats)
+            breakdown_rows.append({
+                t_func('seat'): '',
+                t_func('paddler'): f"**{t_func('total')}**",
+                t_func('weight_kg'): '',
+                t_func('position_m'): '',
+                t_func('trim_contrib'): f"**{total_trim:+.1f}**",
+                t_func('moi_contrib'): f"**{total_moi:.1f}**",
+            })
+            breakdown_df = pd.DataFrame(breakdown_rows)
+            st.dataframe(breakdown_df, use_container_width=True, hide_index=True)
+
+
 # Translations
 TRANSLATIONS = {
     "en": {
@@ -988,147 +1195,23 @@ if st.session_state.get('has_manual_result', False):
     manual_schedule = st.session_state['manual_schedule']
     cycle_length = len(manual_schedule)
 
-    # Key metrics (same as simple mode)
+    # Key metrics
     col1, col2 = st.columns(2)
     with col1:
         st.metric(t("cycle_length"), f"{cycle_length} {t('stints').lower()}")
     with col2:
         st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
 
-    # Generate rotation rules
+    # Generate data for display
     cycle_rules = generate_cycle_rules(manual_schedule, names, n_seats)
-
-    # Cycle rules (same as automatic mode)
-    st.subheader(t("rotation_rules"))
-    st.markdown(t("rotation_rules_desc"))
-
-    rules_df = pd.DataFrame([
-        {t('paddler'): name, t('rule'): rule}
-        for name, rule in cycle_rules.items()
-    ])
-    st.dataframe(rules_df, use_container_width=True, hide_index=True)
-
-    # Colored rotation pattern grid (show 2 cycles like automatic mode)
-    st.subheader(t("rotation_pattern"))
-
-    all_paddlers_set = set(names)
-    n_rows_to_show = cycle_length * 2  # Show 2 cycles
-
-    st.markdown(t("rotation_pattern_desc").format(n=cycle_length, times="∞"))
-
-    # Build schedule for 2 cycles by repeating
-    schedule_2cycles = pd.concat([manual_schedule, manual_schedule], ignore_index=True)
-    schedule_2cycles.columns = [f"Banco {s+1}" for s in range(n_seats)]
-
-    # Build matrix with paddlers out (resting)
-    out_matrix = []
-    for i in range(n_rows_to_show):
-        in_canoe = set(schedule_2cycles.iloc[i].values)
-        out = sorted(all_paddlers_set - in_canoe)
-        out_matrix.append(out)
-    out_df = pd.DataFrame(out_matrix, columns=[f"{t('out')} {j+1}" for j in range(n_resting)])
-
-    # Combine in and out
-    combined = pd.concat([schedule_2cycles.reset_index(drop=True), out_df], axis=1)
-    paddler_to_num = {name: i for i, name in enumerate(names)}
-    combined_numeric = combined.replace(paddler_to_num)
-
-    # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, max(3, n_rows_to_show * 0.6)),
-                                    gridspec_kw={'width_ratios': [n_seats, n_resting], 'wspace': 0.05})
-
-    # Left plot: seats (in canoe)
-    im1 = ax1.imshow(combined_numeric.iloc[:, :n_seats].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
-    ax1.set_xticks(range(n_seats))
-    seat_labels = [f"{t('seat')} {i+1}" for i in range(n_seats)]
-    ax1.set_xticklabels(seat_labels, fontsize=9)
-    ax1.set_yticks(range(n_rows_to_show))
-    ax1.set_yticklabels([f"{t('stint')} {i+1}" for i in range(n_rows_to_show)])
-
-    for i in range(n_rows_to_show):
-        for j in range(n_seats):
-            name = combined.iloc[i, j]
-            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
-
-    # Highlight first cycle with yellow dashed rectangle
-    rect = Rectangle((-0.5, -0.5), n_seats, cycle_length, linewidth=3,
-                    edgecolor='yellow', facecolor='none', linestyle='--')
-    ax1.add_patch(rect)
-
-    # Right plot: out (resting)
-    im2 = ax2.imshow(combined_numeric.iloc[:, n_seats:].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
-    ax2.set_xticks(range(n_resting))
-    ax2.set_xticklabels([f"{t('out')} {j+1}" for j in range(n_resting)], fontsize=9)
-    ax2.set_yticks(range(n_rows_to_show))
-    ax2.set_yticklabels([])
-
-    for i in range(n_rows_to_show):
-        for j in range(n_resting):
-            name = combined.iloc[i, n_seats + j]
-            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
-
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
-
-    # Paddler summary (same as simple mode)
-    st.subheader(t("paddler_summary"))
     paddler_summary = generate_paddler_summary(manual_schedule, names, n_seats)
-    cols_to_show = ['name', 'stints_paddled', 'stints_rested', 'longest_stretch_stints', 'stints_paddled_per_cycle']
-    st.dataframe(paddler_summary[cols_to_show], use_container_width=True, hide_index=True)
 
-    # Balance analysis (trim stats)
-    st.subheader(t("balance_analysis"))
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
-    with col2:
-        st.metric(t("avg_moi"), f"{trim_stats['avg_moi']:.1f} kg-m²")
-
-    # Show normalized values for comparison across crews
-    if 'normalized_max_abs_trim' in trim_stats:
-        st.caption(f"{t('normalized')}: Trim={trim_stats['normalized_max_abs_trim']:.2f}, "
-                  f"MOI={trim_stats['normalized_avg_moi']:.2f}")
-
-    # Stint details table
-    st.markdown(f"**{t('cycle_stint_details')}**")
-    trim_data = pd.DataFrame({
-        t('stint'): [f"{t('stint')} {i+1}" for i in range(len(trim_stats['trim_moments']))],
-        t('trim_kgm'): [f"{m:+.1f}" for m in trim_stats['trim_moments']],
-        t('direction'): [t('stern') if m > 0 else t('bow') if m < 0 else t('neutral')
-                      for m in trim_stats['trim_moments']],
-        t('moi_kgm2'): [f"{m:.1f}" for m in trim_stats['moi_values']]
-    })
-    st.dataframe(trim_data, use_container_width=True, hide_index=True)
-
-    # Seat breakdown table showing intermediate calculations
-    if 'seat_breakdown' in trim_stats:
-        with st.expander(t("seat_breakdown"), expanded=False):
-            for stint_idx, stint_seats in enumerate(trim_stats['seat_breakdown']):
-                st.markdown(f"**{t('stint')} {stint_idx + 1}**")
-                breakdown_rows = []
-                for seat_data in stint_seats:
-                    breakdown_rows.append({
-                        t('seat'): seat_data['seat'],
-                        t('paddler'): seat_data['name'],
-                        t('weight_kg'): f"{seat_data['weight']:.1f}",
-                        t('position_m'): f"{seat_data['position']:+.1f}",
-                        t('trim_contrib'): f"{seat_data['trim_contrib']:+.1f}",
-                        t('moi_contrib'): f"{seat_data['moi_contrib']:.1f}",
-                    })
-                # Add total row
-                total_trim = sum(s['trim_contrib'] for s in stint_seats)
-                total_moi = sum(s['moi_contrib'] for s in stint_seats)
-                breakdown_rows.append({
-                    t('seat'): '',
-                    t('paddler'): f"**{t('total')}**",
-                    t('weight_kg'): '',
-                    t('position_m'): '',
-                    t('trim_contrib'): f"**{total_trim:+.1f}**",
-                    t('moi_contrib'): f"**{total_moi:.1f}**",
-                })
-                breakdown_df = pd.DataFrame(breakdown_rows)
-                st.dataframe(breakdown_df, use_container_width=True, hide_index=True)
+    # Use unified display functions
+    display_rotation_rules(cycle_rules, t)
+    display_rotation_pattern(manual_schedule, names, n_seats, n_resting, cycle_length, None, t)
+    display_paddler_summary(paddler_summary, show_time_columns=False, t_func=t)
+    display_balance_analysis(trim_stats, show_cycle_outputs=False, t_func=t)
+    display_seat_breakdown(trim_stats, t, expanded=False)
 
 # Display optimization results (not shown in manual mode)
 if st.session_state.get('has_result', False) and interface_mode != "manual":
@@ -1177,149 +1260,19 @@ if st.session_state.get('has_result', False) and interface_mode != "manual":
                 summary_df['avg_output'] = (summary_df['avg_output'] * 100).round(1).astype(str) + '%'
                 st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
-    # Cycle rules
-    st.subheader(t("rotation_rules"))
-    st.markdown(t("rotation_rules_desc"))
-
-    rules_df = pd.DataFrame([
-        {t('paddler'): name, t('rule'): rule}
-        for name, rule in result['cycle_rules'].items()
-    ])
-    st.dataframe(rules_df, use_container_width=True, hide_index=True)
-
-    # Colored rotation pattern grid
-    st.subheader(t("rotation_pattern"))
-
+    # Use unified display functions
     cycle_length = result['parameters']['cycle_length']
     n_stints_total = result['parameters']['n_stints']
     n_cycles_total = n_stints_total // cycle_length
 
-    # Show 2 cycles or less if race is shorter
-    n_rows_to_show = min(cycle_length * 2, n_stints_total)
-    n_cycles_shown = n_rows_to_show // cycle_length
+    display_rotation_rules(result['cycle_rules'], t)
+    display_rotation_pattern(result['cycle_schedule'], names, n_seats, n_resting,
+                            cycle_length, n_cycles_total, t)
+    display_paddler_summary(result['paddler_summary'], show_time_columns=(result_mode == "full"), t_func=t)
 
-    st.markdown(t("rotation_pattern_desc").format(n=cycle_length, times=n_cycles_total))
-
-    schedule_for_grid = result['schedule'].head(n_rows_to_show).copy()
-    all_paddlers_set = set(names)
-
-    # Build matrix with paddlers out (resting)
-    out_matrix = []
-    for i in range(n_rows_to_show):
-        in_canoe = set(schedule_for_grid.iloc[i].values)
-        out = sorted(all_paddlers_set - in_canoe)
-        out_matrix.append(out)
-    out_df = pd.DataFrame(out_matrix, columns=[f"{t('out')} {j+1}" for j in range(n_resting)])
-
-    # Combine in and out
-    combined = pd.concat([schedule_for_grid.reset_index(drop=True), out_df], axis=1)
-    paddler_to_num = {name: i for i, name in enumerate(names)}
-    combined_numeric = combined.replace(paddler_to_num)
-
-    # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, max(3, n_rows_to_show * 0.6)),
-                                    gridspec_kw={'width_ratios': [n_seats, n_resting], 'wspace': 0.05})
-
-    # Left plot: seats (in canoe)
-    im1 = ax1.imshow(combined_numeric.iloc[:, :n_seats].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
-    ax1.set_xticks(range(n_seats))
-    seat_labels = [f"{t('seat')} {i+1}" for i in range(n_seats)]
-    ax1.set_xticklabels(seat_labels, fontsize=9)
-    ax1.set_yticks(range(n_rows_to_show))
-    ax1.set_yticklabels([f"{t('stint')} {i+1}" for i in range(n_rows_to_show)])
-
-    for i in range(n_rows_to_show):
-        for j in range(n_seats):
-            name = combined.iloc[i, j]
-            ax1.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
-
-    # Highlight first cycle with yellow dashed rectangle
-    if n_rows_to_show > cycle_length:
-        rect = Rectangle((-0.5, -0.5), n_seats, cycle_length, linewidth=3,
-                        edgecolor='yellow', facecolor='none', linestyle='--')
-        ax1.add_patch(rect)
-
-    # Right plot: out (resting)
-    im2 = ax2.imshow(combined_numeric.iloc[:, n_seats:].values, cmap='tab10', aspect='auto', vmin=0, vmax=9)
-    ax2.set_xticks(range(n_resting))
-    ax2.set_xticklabels([f"{t('out')} {j+1}" for j in range(n_resting)], fontsize=9)
-    ax2.set_yticks(range(n_rows_to_show))
-    ax2.set_yticklabels([])
-
-    for i in range(n_rows_to_show):
-        for j in range(n_resting):
-            name = combined.iloc[i, n_seats + j]
-            ax2.text(j, i, name[:3], ha='center', va='center', fontsize=10, fontweight='bold', color='white')
-
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
-
-    # Paddler summary (mode-dependent columns)
-    st.subheader(t("paddler_summary"))
-    paddler_summary = result['paddler_summary'].copy()
-    if result_mode == "simple":
-        # Simple mode: hide time-related columns
-        cols_to_show = ['name', 'stints_paddled', 'stints_rested', 'longest_stretch_stints', 'stints_paddled_per_cycle']
-        cols_available = [c for c in cols_to_show if c in paddler_summary.columns]
-        st.dataframe(paddler_summary[cols_available], use_container_width=True, hide_index=True)
-    else:
-        st.dataframe(paddler_summary, use_container_width=True, hide_index=True)
-
-    # Trim stats (always shown for transparency)
     trim_stats = result['parameters'].get('trim_stats')
-    if trim_stats:
-        st.subheader(t("balance_analysis"))
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(t("max_trim"), f"{trim_stats['max_abs_trim_moment']:.1f} kg-m")
-        with col2:
-            st.metric(t("avg_moi"), f"{trim_stats.get('avg_moi', 0):.1f} kg-m²")
-
-        # Show normalized values for comparison across crews
-        if 'normalized_max_abs_trim' in trim_stats:
-            st.caption(f"{t('normalized')}: Trim={trim_stats['normalized_max_abs_trim']:.2f}, "
-                      f"MOI={trim_stats['normalized_avg_moi']:.2f}")
-
-        st.markdown(f"**{t('cycle_stint_details')}**")
-        trim_data = pd.DataFrame({
-            t('stint'): [f"{t('stint')} {i+1}" for i in range(len(trim_stats['trim_moments']))],
-            t('avg_output'): [f"{o:.1%}" for o in trim_stats.get('cycle_avg_outputs', [0] * len(trim_stats['trim_moments']))],
-            t('trim_kgm'): [f"{m:+.1f}" for m in trim_stats['trim_moments']],
-            t('direction'): [t('stern') if m > 0 else t('bow') if m < 0 else t('neutral')
-                          for m in trim_stats['trim_moments']],
-            t('moi_kgm2'): [f"{m:.1f}" for m in trim_stats.get('moi_values', [0] * len(trim_stats['trim_moments']))]
-        })
-        st.dataframe(trim_data, use_container_width=True, hide_index=True)
-
-        # Seat breakdown table showing intermediate calculations
-        if 'seat_breakdown' in trim_stats:
-            with st.expander(t("seat_breakdown"), expanded=False):
-                for stint_idx, stint_seats in enumerate(trim_stats['seat_breakdown']):
-                    st.markdown(f"**{t('stint')} {stint_idx + 1}**")
-                    breakdown_rows = []
-                    for seat_data in stint_seats:
-                        breakdown_rows.append({
-                            t('seat'): seat_data['seat'],
-                            t('paddler'): seat_data['name'],
-                            t('weight_kg'): f"{seat_data['weight']:.1f}",
-                            t('position_m'): f"{seat_data['position']:+.1f}",
-                            t('trim_contrib'): f"{seat_data['trim_contrib']:+.1f}",
-                            t('moi_contrib'): f"{seat_data['moi_contrib']:.1f}",
-                        })
-                    # Add total row
-                    total_trim = sum(s['trim_contrib'] for s in stint_seats)
-                    total_moi = sum(s['moi_contrib'] for s in stint_seats)
-                    breakdown_rows.append({
-                        t('seat'): '',
-                        t('paddler'): f"**{t('total')}**",
-                        t('weight_kg'): '',
-                        t('position_m'): '',
-                        t('trim_contrib'): f"**{total_trim:+.1f}**",
-                        t('moi_contrib'): f"**{total_moi:.1f}**",
-                    })
-                    breakdown_df = pd.DataFrame(breakdown_rows)
-                    st.dataframe(breakdown_df, use_container_width=True, hide_index=True)
+    display_balance_analysis(trim_stats, show_cycle_outputs=True, t_func=t)
+    display_seat_breakdown(trim_stats, t, expanded=False)
 
     # Stats columns (only in full mode)
     if result_mode == "full":
